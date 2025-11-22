@@ -155,5 +155,6 @@ export default function FlightCard({ flight }: FlightCardProps) {
                     </div>
                 </div>
             </div>
-            );
+        </div>
+    );
 }

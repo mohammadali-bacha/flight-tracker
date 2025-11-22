@@ -27,6 +27,7 @@ export interface Flight {
         longitude: number;
         terminal?: string;
         gate?: string;
+        baggage?: string;
     };
     status: 'On Time' | 'Delayed' | 'Boarding' | 'In Air' | 'Landed' | 'Cancelled' | 'Scheduled';
     delay?: number; // Delay in minutes
