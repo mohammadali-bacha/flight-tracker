@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import airportsData from '@/app/data/airports.json';
+
+// Type definition for the imported JSON
+const AIRPORTS: Record<string, { lat: number; lon: number; city: string; country: string; name: string }> = airportsData as any;
 
 export interface Flight {
     id: string;
@@ -26,45 +30,6 @@ export interface Flight {
     };
     status: 'On Time' | 'Delayed' | 'Boarding' | 'In Air' | 'Landed';
 }
-
-const AIRPORT_COORDINATES: Record<string, { lat: number; lon: number; city: string; timezone: string }> = {
-    // Americas
-    'JFK': { lat: 40.6413, lon: -73.7781, city: 'New York', timezone: 'America/New_York' },
-    'LAX': { lat: 33.9416, lon: -118.4085, city: 'Los Angeles', timezone: 'America/Los_Angeles' },
-    'SFO': { lat: 37.6213, lon: -122.3790, city: 'San Francisco', timezone: 'America/Los_Angeles' },
-
-    // Europe
-    'LHR': { lat: 51.4700, lon: -0.4543, city: 'London', timezone: 'Europe/London' },
-    'CDG': { lat: 49.0097, lon: 2.5479, city: 'Paris', timezone: 'Europe/Paris' },
-    'ORY': { lat: 48.7233, lon: 2.3794, city: 'Paris Orly', timezone: 'Europe/Paris' },
-    'LYS': { lat: 45.7256, lon: 5.0811, city: 'Lyon', timezone: 'Europe/Paris' },
-    'AMS': { lat: 52.3105, lon: 4.7683, city: 'Amsterdam', timezone: 'Europe/Amsterdam' },
-    'FRA': { lat: 50.0379, lon: 8.5622, city: 'Frankfurt', timezone: 'Europe/Berlin' },
-    'MAD': { lat: 40.4936, lon: -3.5668, city: 'Madrid', timezone: 'Europe/Madrid' },
-    'FCO': { lat: 41.8003, lon: 12.2389, city: 'Rome', timezone: 'Europe/Rome' },
-
-    // Middle East
-    'DXB': { lat: 25.2532, lon: 55.3657, city: 'Dubai', timezone: 'Asia/Dubai' },
-    'DOH': { lat: 25.2731, lon: 51.6080, city: 'Doha', timezone: 'Asia/Qatar' },
-    'AUH': { lat: 24.4330, lon: 54.6511, city: 'Abu Dhabi', timezone: 'Asia/Dubai' },
-    'IST': { lat: 41.2753, lon: 28.7519, city: 'Istanbul', timezone: 'Europe/Istanbul' },
-    'CAI': { lat: 30.1219, lon: 31.4056, city: 'Cairo', timezone: 'Africa/Cairo' },
-
-    // Asia
-    'HND': { lat: 35.5494, lon: 139.7798, city: 'Tokyo', timezone: 'Asia/Tokyo' },
-    'SIN': { lat: 1.3644, lon: 103.9915, city: 'Singapore', timezone: 'Asia/Singapore' },
-    'HKG': { lat: 22.3080, lon: 113.9185, city: 'Hong Kong', timezone: 'Asia/Hong_Kong' },
-    'BKK': { lat: 13.6900, lon: 100.7501, city: 'Bangkok', timezone: 'Asia/Bangkok' },
-
-    // Africa / Morocco
-    'CMN': { lat: 33.3675, lon: -7.5898, city: 'Casablanca', timezone: 'Africa/Casablanca' },
-    'RAK': { lat: 31.6069, lon: -8.0363, city: 'Marrakech', timezone: 'Africa/Casablanca' },
-    'FEZ': { lat: 33.9273, lon: -4.9778, city: 'Fès', timezone: 'Africa/Casablanca' },
-    'TNG': { lat: 35.7269, lon: -5.9169, city: 'Tanger', timezone: 'Africa/Casablanca' },
-
-    // Africa / Other
-    'ABJ': { lat: 5.2539, lon: -3.9263, city: 'Abidjan', timezone: 'Africa/Abidjan' },
-};
 
 const MOCK_FLIGHTS: Flight[] = [
     {
@@ -215,8 +180,11 @@ export async function GET(request: Request) {
                 const originCode = apiFlight.departure.iata;
                 const destCode = apiFlight.arrival.iata;
 
-                const originCoords = AIRPORT_COORDINATES[originCode] || { lat: 0, lon: 0 };
-                const destCoords = AIRPORT_COORDINATES[destCode] || { lat: 0, lon: 0 };
+                const originAirport = AIRPORTS[originCode];
+                const destAirport = AIRPORTS[destCode];
+
+                const originCoords = originAirport ? { lat: originAirport.lat, lon: originAirport.lon } : { lat: 0, lon: 0 };
+                const destCoords = destAirport ? { lat: destAirport.lat, lon: destAirport.lon } : { lat: 0, lon: 0 };
 
                 return {
                     id: `${apiFlight.flight.iata}-${apiFlight.departure.scheduled}`,
