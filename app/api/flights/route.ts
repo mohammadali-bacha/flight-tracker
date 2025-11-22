@@ -58,6 +58,7 @@ const AIRPORT_COORDINATES: Record<string, { lat: number; lon: number; city: stri
     // Africa / Morocco
     'CMN': { lat: 33.3675, lon: -7.5898, city: 'Casablanca', timezone: 'Africa/Casablanca' },
     'RAK': { lat: 31.6069, lon: -8.0363, city: 'Marrakech', timezone: 'Africa/Casablanca' },
+    'FEZ': { lat: 33.9273, lon: -4.9778, city: 'Fès', timezone: 'Africa/Casablanca' },
 };
 
 const MOCK_FLIGHTS: Flight[] = [
