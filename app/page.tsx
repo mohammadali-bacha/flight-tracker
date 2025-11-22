@@ -13,6 +13,23 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Update document title when flights change
+  useEffect(() => {
+    if (flights.length > 0) {
+      document.title = `Vol ${flights[0].flightNumber} - Voyages de Céline`;
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', `Vol ${flights[0].flightNumber} : Horaires, terminal, porte, météo à destination et temps de trajet vers l'aéroport`);
+      }
+    } else {
+      document.title = 'Voyages de Céline';
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', 'Suivi de vol personnel et temps de trajet');
+      }
+    }
+  }, [flights]);
+
   // Wrap the search logic in a component that uses useSearchParams
   const SearchController = () => {
     const searchParams = useSearchParams();
