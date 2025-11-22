@@ -36,6 +36,7 @@ const AIRPORT_COORDINATES: Record<string, { lat: number; lon: number; city: stri
     // Europe
     'LHR': { lat: 51.4700, lon: -0.4543, city: 'London', timezone: 'Europe/London' },
     'CDG': { lat: 49.0097, lon: 2.5479, city: 'Paris', timezone: 'Europe/Paris' },
+    'ORY': { lat: 48.7233, lon: 2.3794, city: 'Paris Orly', timezone: 'Europe/Paris' },
     'LYS': { lat: 45.7256, lon: 5.0811, city: 'Lyon', timezone: 'Europe/Paris' },
     'AMS': { lat: 52.3105, lon: 4.7683, city: 'Amsterdam', timezone: 'Europe/Amsterdam' },
     'FRA': { lat: 50.0379, lon: 8.5622, city: 'Frankfurt', timezone: 'Europe/Berlin' },
@@ -59,6 +60,10 @@ const AIRPORT_COORDINATES: Record<string, { lat: number; lon: number; city: stri
     'CMN': { lat: 33.3675, lon: -7.5898, city: 'Casablanca', timezone: 'Africa/Casablanca' },
     'RAK': { lat: 31.6069, lon: -8.0363, city: 'Marrakech', timezone: 'Africa/Casablanca' },
     'FEZ': { lat: 33.9273, lon: -4.9778, city: 'Fès', timezone: 'Africa/Casablanca' },
+    'TNG': { lat: 35.7269, lon: -5.9169, city: 'Tanger', timezone: 'Africa/Casablanca' },
+
+    // Africa / Other
+    'ABJ': { lat: 5.2539, lon: -3.9263, city: 'Abidjan', timezone: 'Africa/Abidjan' },
 };
 
 const MOCK_FLIGHTS: Flight[] = [
