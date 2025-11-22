@@ -140,6 +140,11 @@ export default function FlightCard({ flight }: FlightCardProps) {
                                             Porte {flight.destination.gate}
                                         </span>
                                     )}
+                                    {flight.destination.baggage && (
+                                        <span className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-400">
+                                            Tapis {flight.destination.baggage}
+                                        </span>
+                                    )}
                                 </div>
                             )}
                             <div className="mt-4 space-y-1">

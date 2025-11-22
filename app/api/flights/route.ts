@@ -199,7 +199,7 @@ export async function GET(request: Request) {
                     origin: {
                         code: originCode,
                         city: apiFlight.departure.airport,
-                        time: apiFlight.departure.scheduled,
+                        time: apiFlight.departure.estimated || apiFlight.departure.actual || apiFlight.departure.scheduled, // Use estimated/actual if available
                         timezone: apiFlight.departure.timezone || 'UTC',
                         latitude: originCoords.lat,
                         longitude: originCoords.lon,
@@ -209,12 +209,13 @@ export async function GET(request: Request) {
                     destination: {
                         code: destCode,
                         city: apiFlight.arrival.airport,
-                        time: apiFlight.arrival.scheduled,
+                        time: apiFlight.arrival.estimated || apiFlight.arrival.actual || apiFlight.arrival.scheduled, // Use estimated/actual if available
                         timezone: apiFlight.arrival.timezone || 'UTC',
                         latitude: destCoords.lat,
                         longitude: destCoords.lon,
                         terminal: apiFlight.arrival.terminal,
                         gate: apiFlight.arrival.gate,
+                        baggage: apiFlight.arrival.baggage, // Map baggage info
                     },
                     status: apiFlight.flight_status === 'active' ? 'In Air' :
                         apiFlight.flight_status === 'landed' ? 'Landed' :
