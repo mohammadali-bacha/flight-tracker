@@ -62,7 +62,10 @@ export default function Home() {
             Infos de vol pour mon impératrice
           </h1>
           <p className="mt-4 text-lg text-gray-400">
-            Entre ton numéro de vol pour voir les détails et ton trajet.
+            {flights.length > 0
+              ? `Ton vol ${flights[0].flightNumber} est affiché ci-dessous. Tu peux chercher un autre vol ici :`
+              : "Entre ton numéro de vol pour voir les détails et ton trajet."
+            }
           </p>
         </div>
 
