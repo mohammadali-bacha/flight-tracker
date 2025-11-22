@@ -25,24 +25,38 @@ export default function TravelCard({ airportName, airportCode, latitude, longitu
         try {
             setLoading(true);
             setError(null);
+
+            console.log('Calculating route from:', userLat, userLon, 'to:', latitude, longitude);
+
+            // Vérifier que les coordonnées sont valides
+            if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+                setError("Coordonnées de l'aéroport non disponibles");
+                setLoading(false);
+                return;
+            }
+
             // Utiliser OSRM (Open Source Routing Machine) pour calculer le trajet
-            const response = await fetch(
-                `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${longitude},${latitude}?overview=false`
-            );
+            const url = `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${longitude},${latitude}?overview=false`;
+            console.log('OSRM URL:', url);
+
+            const response = await fetch(url);
             const data = await response.json();
 
-            if (data.routes && data.routes.length > 0) {
+            console.log('OSRM Response:', data);
+
+            if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
                 setRouteInfo({
                     duration: data.routes[0].duration,
                     distance: data.routes[0].distance,
                 });
                 setUserLocation({ lat: userLat, lon: userLon });
             } else {
-                setError("Impossible de calculer le trajet");
+                console.error('OSRM Error:', data);
+                setError(`Impossible de calculer le trajet (${data.code || 'erreur inconnue'})`);
             }
         } catch (err) {
             console.error('Erreur lors du calcul du trajet:', err);
-            setError("Erreur de calcul");
+            setError("Erreur de calcul du trajet");
         } finally {
             setLoading(false);
         }
