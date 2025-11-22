@@ -92,6 +92,8 @@ export default function FlightTrackerClient() {
                                     <TravelCard
                                         airportName={flight.origin.city}
                                         airportCode={flight.origin.code}
+                                        latitude={flight.origin.latitude}
+                                        longitude={flight.origin.longitude}
                                     />
                                 </div>
                                 <div className="lg:col-span-1">

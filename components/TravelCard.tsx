@@ -1,15 +1,103 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 
 interface TravelCardProps {
     airportName: string;
     airportCode: string;
+    latitude: number;
+    longitude: number;
 }
 
-export default function TravelCard({ airportName, airportCode }: TravelCardProps) {
-    // Mock data for travel time
-    const travelTime = "45 min";
-    const trafficStatus = "Fluide";
-    const distance = "32 km";
+interface RouteInfo {
+    duration: number; // en secondes
+    distance: number; // en mètres
+}
+
+export default function TravelCard({ airportName, airportCode, latitude, longitude }: TravelCardProps) {
+    const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+    useEffect(() => {
+        // Vérifier si les coordonnées de l'aéroport sont valides
+        if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+            setError("Coordonnées de l'aéroport non disponibles");
+            setLoading(false);
+            return;
+        }
+
+        // Demander la géolocalisation
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLon = position.coords.longitude;
+                    setUserLocation({ lat: userLat, lon: userLon });
+
+                    try {
+                        // Utiliser OSRM (Open Source Routing Machine) pour calculer le trajet
+                        const response = await fetch(
+                            `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${longitude},${latitude}?overview=false`
+                        );
+                        const data = await response.json();
+
+                        if (data.routes && data.routes.length > 0) {
+                            setRouteInfo({
+                                duration: data.routes[0].duration,
+                                distance: data.routes[0].distance,
+                            });
+                        } else {
+                            setError("Impossible de calculer le trajet");
+                        }
+                    } catch (err) {
+                        console.error('Erreur lors du calcul du trajet:', err);
+                        setError("Erreur de calcul");
+                    } finally {
+                        setLoading(false);
+                    }
+                },
+                (err) => {
+                    console.error('Erreur de géolocalisation:', err);
+                    setError("Géolocalisation refusée");
+                    setLoading(false);
+                }
+            );
+        } else {
+            setError("Géolocalisation non disponible");
+            setLoading(false);
+        }
+    }, [latitude, longitude]);
+
+    const formatDuration = (seconds: number): string => {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (hours > 0) {
+            return `${hours}h ${minutes}min`;
+        }
+        return `${minutes} min`;
+    };
+
+    const formatDistance = (meters: number): string => {
+        const km = (meters / 1000).toFixed(1);
+        return `${km} km`;
+    };
+
+    const getTrafficStatus = (duration: number): { text: string; color: string } => {
+        // Simple heuristique : si c'est moins de 30 min, c'est fluide
+        if (duration < 1800) return { text: "Fluide", color: "text-green-400" };
+        if (duration < 3600) return { text: "Modéré", color: "text-yellow-400" };
+        return { text: "Dense", color: "text-red-400" };
+    };
+
+    const openInMaps = () => {
+        if (userLocation) {
+            // Ouvrir dans Google Maps
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lon}&destination=${latitude},${longitude}&travelmode=driving`;
+            window.open(url, '_blank');
+        }
+    };
 
     return (
         <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-white/10 hover:shadow-2xl hover:shadow-pink-500/10">
@@ -28,32 +116,51 @@ export default function TravelCard({ airportName, airportCode }: TravelCardProps
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="rounded-xl bg-black/20 p-3 text-center">
-                        <div className="text-xs text-gray-500">Temps estimé</div>
-                        <div className="text-xl font-bold text-white">{travelTime}</div>
+                {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-pink-500 border-t-transparent"></div>
                     </div>
-                    <div className="rounded-xl bg-black/20 p-3 text-center">
-                        <div className="text-xs text-gray-500">Distance</div>
-                        <div className="text-xl font-bold text-white">{distance}</div>
+                ) : error ? (
+                    <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-center">
+                        <p className="text-sm text-red-400">{error}</p>
+                        <p className="mt-2 text-xs text-gray-500">Activez la géolocalisation pour voir le trajet</p>
                     </div>
-                    <div className="rounded-xl bg-black/20 p-3 text-center">
-                        <div className="text-xs text-gray-500">Trafic</div>
-                        <div className="text-xl font-bold text-green-400">{trafficStatus}</div>
-                    </div>
-                </div>
+                ) : routeInfo ? (
+                    <>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="rounded-xl bg-black/20 p-3 text-center">
+                                <div className="text-xs text-gray-500">Temps estimé</div>
+                                <div className="text-xl font-bold text-white">{formatDuration(routeInfo.duration)}</div>
+                            </div>
+                            <div className="rounded-xl bg-black/20 p-3 text-center">
+                                <div className="text-xs text-gray-500">Distance</div>
+                                <div className="text-xl font-bold text-white">{formatDistance(routeInfo.distance)}</div>
+                            </div>
+                            <div className="rounded-xl bg-black/20 p-3 text-center">
+                                <div className="text-xs text-gray-500">Trafic</div>
+                                <div className={`text-xl font-bold ${getTrafficStatus(routeInfo.duration).color}`}>
+                                    {getTrafficStatus(routeInfo.duration).text}
+                                </div>
+                            </div>
+                        </div>
 
-                <div className="mt-4 flex items-center justify-between rounded-lg bg-white/5 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-400">Destination:</span>
-                        <span className="font-semibold text-white">{airportName} ({airportCode})</span>
-                    </div>
-                    <button className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                        </svg>
-                    </button>
-                </div>
+                        <div className="mt-4 flex items-center justify-between rounded-lg bg-white/5 px-4 py-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-400">Destination:</span>
+                                <span className="font-semibold text-white">{airportName} ({airportCode})</span>
+                            </div>
+                            <button
+                                onClick={openInMaps}
+                                className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+                                title="Ouvrir dans Google Maps"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                            </button>
+                        </div>
+                    </>
+                ) : null}
             </div>
         </div>
     );
