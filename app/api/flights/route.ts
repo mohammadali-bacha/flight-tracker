@@ -28,7 +28,8 @@ export interface Flight {
         terminal?: string;
         gate?: string;
     };
-    status: 'On Time' | 'Delayed' | 'Boarding' | 'In Air' | 'Landed';
+    status: 'On Time' | 'Delayed' | 'Boarding' | 'In Air' | 'Landed' | 'Cancelled' | 'Scheduled';
+    delay?: number; // Delay in minutes
 }
 
 const MOCK_FLIGHTS: Flight[] = [
@@ -57,6 +58,7 @@ const MOCK_FLIGHTS: Flight[] = [
             gate: 'A12',
         },
         status: 'On Time',
+        delay: 0,
     },
     {
         id: '2',
@@ -83,6 +85,7 @@ const MOCK_FLIGHTS: Flight[] = [
             gate: 'C45',
         },
         status: 'In Air',
+        delay: 0,
     },
     {
         id: '3',
@@ -105,6 +108,7 @@ const MOCK_FLIGHTS: Flight[] = [
             longitude: 139.7798,
         },
         status: 'Boarding',
+        delay: 0,
     },
     {
         id: '4',
@@ -127,6 +131,7 @@ const MOCK_FLIGHTS: Flight[] = [
             longitude: 103.9915,
         },
         status: 'Delayed',
+        delay: 45,
     },
     {
         id: '5',
@@ -149,6 +154,7 @@ const MOCK_FLIGHTS: Flight[] = [
             longitude: 55.3657,
         },
         status: 'On Time',
+        delay: 0,
     },
 ];
 
@@ -212,8 +218,10 @@ export async function GET(request: Request) {
                     },
                     status: apiFlight.flight_status === 'active' ? 'In Air' :
                         apiFlight.flight_status === 'landed' ? 'Landed' :
-                            apiFlight.flight_status === 'scheduled' ? 'On Time' :
-                                apiFlight.flight_status.charAt(0).toUpperCase() + apiFlight.flight_status.slice(1),
+                            apiFlight.flight_status === 'cancelled' ? 'Cancelled' :
+                                apiFlight.flight_status === 'scheduled' ? 'On Time' :
+                                    apiFlight.flight_status.charAt(0).toUpperCase() + apiFlight.flight_status.slice(1),
+                    delay: apiFlight.departure.delay || 0,
                 };
             });
 
