@@ -153,6 +153,7 @@ const MOCK_FLIGHTS: Flight[] = [
             timezone: 'GST',
             latitude: 25.2532,
             longitude: 55.3657,
+            baggage: '5', // Added for testing
         },
         status: 'On Time',
         delay: 0,
