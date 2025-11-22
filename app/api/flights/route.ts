@@ -36,6 +36,7 @@ const AIRPORT_COORDINATES: Record<string, { lat: number; lon: number; city: stri
     // Europe
     'LHR': { lat: 51.4700, lon: -0.4543, city: 'London', timezone: 'Europe/London' },
     'CDG': { lat: 49.0097, lon: 2.5479, city: 'Paris', timezone: 'Europe/Paris' },
+    'LYS': { lat: 45.7256, lon: 5.0811, city: 'Lyon', timezone: 'Europe/Paris' },
     'AMS': { lat: 52.3105, lon: 4.7683, city: 'Amsterdam', timezone: 'Europe/Amsterdam' },
     'FRA': { lat: 50.0379, lon: 8.5622, city: 'Frankfurt', timezone: 'Europe/Berlin' },
     'MAD': { lat: 40.4936, lon: -3.5668, city: 'Madrid', timezone: 'Europe/Madrid' },
