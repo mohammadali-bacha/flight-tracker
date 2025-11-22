@@ -16,57 +16,85 @@ interface RouteInfo {
 
 export default function TravelCard({ airportName, airportCode, latitude, longitude }: TravelCardProps) {
     const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+    const [hasAttempted, setHasAttempted] = useState(false);
+
+    const calculateRoute = async (userLat: number, userLon: number) => {
+        try {
+            setLoading(true);
+            setError(null);
+            // Utiliser OSRM (Open Source Routing Machine) pour calculer le trajet
+            const response = await fetch(
+                `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${longitude},${latitude}?overview=false`
+            );
+            const data = await response.json();
+
+            if (data.routes && data.routes.length > 0) {
+                setRouteInfo({
+                    duration: data.routes[0].duration,
+                    distance: data.routes[0].distance,
+                });
+                setUserLocation({ lat: userLat, lon: userLon });
+            } else {
+                setError("Impossible de calculer le trajet");
+            }
+        } catch (err) {
+            console.error('Erreur lors du calcul du trajet:', err);
+            setError("Erreur de calcul");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const requestLocation = () => {
+        setHasAttempted(true);
+
+        if (!('geolocation' in navigator)) {
+            setError("Géolocalisation non disponible sur votre appareil");
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                calculateRoute(userLat, userLon);
+            },
+            (err) => {
+                console.error('Erreur de géolocalisation:', err);
+                if (err.code === 1) {
+                    setError("Permission refusée. Cliquez pour réessayer.");
+                } else if (err.code === 2) {
+                    setError("Position indisponible");
+                } else {
+                    setError("Erreur de géolocalisation");
+                }
+                setLoading(false);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // Cache 5 minutes
+            }
+        );
+    };
 
     useEffect(() => {
         // Vérifier si les coordonnées de l'aéroport sont valides
         if (!latitude || !longitude || latitude === 0 || longitude === 0) {
             setError("Coordonnées de l'aéroport non disponibles");
-            setLoading(false);
             return;
         }
 
-        // Demander la géolocalisation
-        if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const userLat = position.coords.latitude;
-                    const userLon = position.coords.longitude;
-                    setUserLocation({ lat: userLat, lon: userLon });
-
-                    try {
-                        // Utiliser OSRM (Open Source Routing Machine) pour calculer le trajet
-                        const response = await fetch(
-                            `https://router.project-osrm.org/route/v1/driving/${userLon},${userLat};${longitude},${latitude}?overview=false`
-                        );
-                        const data = await response.json();
-
-                        if (data.routes && data.routes.length > 0) {
-                            setRouteInfo({
-                                duration: data.routes[0].duration,
-                                distance: data.routes[0].distance,
-                            });
-                        } else {
-                            setError("Impossible de calculer le trajet");
-                        }
-                    } catch (err) {
-                        console.error('Erreur lors du calcul du trajet:', err);
-                        setError("Erreur de calcul");
-                    } finally {
-                        setLoading(false);
-                    }
-                },
-                (err) => {
-                    console.error('Erreur de géolocalisation:', err);
-                    setError("Géolocalisation refusée");
-                    setLoading(false);
-                }
-            );
-        } else {
-            setError("Géolocalisation non disponible");
-            setLoading(false);
+        // Tenter automatiquement une fois
+        if (!hasAttempted) {
+            requestLocation();
         }
     }, [latitude, longitude]);
 
@@ -121,9 +149,18 @@ export default function TravelCard({ airportName, airportCode, latitude, longitu
                         <div className="h-8 w-8 animate-spin rounded-full border-2 border-pink-500 border-t-transparent"></div>
                     </div>
                 ) : error ? (
-                    <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-center">
-                        <p className="text-sm text-red-400">{error}</p>
-                        <p className="mt-2 text-xs text-gray-500">Activez la géolocalisation pour voir le trajet</p>
+                    <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-4 text-center">
+                        <p className="text-sm text-orange-400 mb-3">{error}</p>
+                        <button
+                            onClick={requestLocation}
+                            className="rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 px-4 py-2 text-sm font-semibold text-orange-300 transition-colors flex items-center gap-2 mx-auto"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                            </svg>
+                            Activer la géolocalisation
+                        </button>
                     </div>
                 ) : routeInfo ? (
                     <>

@@ -7,15 +7,33 @@ interface FlightCardProps {
 
 export default function FlightCard({ flight }: FlightCardProps) {
     const formatTime = (dateString: string) => {
-        return new Date(dateString).toLocaleTimeString('en-US', {
+        // Parse the ISO string which already contains timezone info
+        const date = new Date(dateString);
+        // Format in the original timezone by extracting hours and minutes
+        return date.toLocaleTimeString('fr-FR', {
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true,
+            hour12: false,
+            timeZone: 'UTC', // We'll use the UTC time from the ISO string
+        });
+    };
+
+    const formatTimeWithTimezone = (dateString: string) => {
+        // Extract just the time part from ISO string (before timezone offset)
+        const match = dateString.match(/T(\d{2}):(\d{2})/);
+        if (match) {
+            return `${match[1]}:${match[2]}`;
+        }
+        return new Date(dateString).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
         });
     };
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('fr-FR', {
             weekday: 'short',
             month: 'short',
             day: 'numeric',
@@ -83,7 +101,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                             </div>
                         )}
                         <div className="mt-4 space-y-1">
-                            <div className="text-3xl font-bold text-white">{formatTime(flight.origin.time)}</div>
+                            <div className="text-3xl font-bold text-white">{formatTimeWithTimezone(flight.origin.time)}</div>
                             <div className="text-sm font-medium text-gray-500 uppercase tracking-wider">{formatDate(flight.origin.time)}</div>
                         </div>
                     </div>
@@ -134,7 +152,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                             </div>
                         )}
                         <div className="mt-4 space-y-1">
-                            <div className="text-3xl font-bold text-white">{formatTime(flight.destination.time)}</div>
+                            <div className="text-3xl font-bold text-white">{formatTimeWithTimezone(flight.destination.time)}</div>
                             <div className="text-sm font-medium text-gray-500 uppercase tracking-wider">{formatDate(flight.destination.time)}</div>
                         </div>
                     </div>
