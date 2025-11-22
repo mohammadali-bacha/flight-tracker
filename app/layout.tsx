@@ -12,22 +12,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }): Promise<Metadata> {
-  const params = await searchParams;
-  const flightNumber = params?.flight || params?.q;
-
-  if (flightNumber && typeof flightNumber === 'string') {
-    return {
-      title: `Vol ${flightNumber} - Voyages de Céline`,
-      description: `Vol ${flightNumber} : Horaires, terminal, porte, météo à destination et temps de trajet vers l'aéroport`,
-    };
-  }
-
-  return {
-    title: "Voyages de Céline",
-    description: "Suivi de vol personnel et temps de trajet",
-  };
-}
+export const metadata: Metadata = {
+  title: "Voyages de Céline",
+  description: "Suivi de vol personnel et temps de trajet",
+};
 
 export default function RootLayout({
   children,
@@ -35,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
