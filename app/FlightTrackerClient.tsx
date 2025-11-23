@@ -137,7 +137,7 @@ export default function FlightTrackerClient() {
 
                                         <div className="relative z-10 mt-6">
                                             <a
-                                                href={`https://www.flightradar24.com/${flight.flightNumber}`}
+                                                href={`https://www.flightradar24.com/data/flights/${flight.flightNumber.replace(/\s/g, '')}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/20"
