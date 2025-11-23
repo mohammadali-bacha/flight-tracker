@@ -165,7 +165,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         <div className="text-sm font-medium text-gray-400">{flight.destination.city}</div>
                         <div className="mt-1 text-2xl font-bold text-white">{formatTimeWithTimezone(flight.destination.time)}</div>
                         {flight.destination.baggage && (
-                            <div className="mt-2 flex flex-col items-end">
+                            <div className="mt-2 flex flex-col items-center md:items-end">
                                 <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1 border border-yellow-500/20 animate-pulse">
                                     <span className="text-xs font-bold text-yellow-500 uppercase mr-1">Tapis</span>
                                     <span className="text-base font-black text-yellow-400">{flight.destination.baggage}</span>
