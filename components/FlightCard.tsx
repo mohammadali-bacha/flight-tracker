@@ -128,7 +128,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                 <div className="mt-8 flex flex-col gap-8 md:flex-row md:items-center md:justify-between bg-black/20 rounded-2xl p-6">
                     {/* Origin */}
                     <div className="flex-1 text-center md:text-left">
-                        <div className="text-4xl font-black tracking-tighter text-white">{flight.origin.code}</div>
+                        <div className="text-5xl md:text-7xl font-black tracking-tighter text-white">{flight.origin.code}</div>
                         <div className="text-sm font-medium text-gray-400">{flight.origin.city}</div>
                         <div className="mt-1 text-2xl font-bold text-white">{formatTimeWithTimezone(flight.origin.time)}</div>
                     </div>
@@ -161,7 +161,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
 
                     {/* Destination */}
                     <div className="flex-1 text-center md:text-right">
-                        <div className="text-4xl font-black tracking-tighter text-white">{flight.destination.code}</div>
+                        <div className="text-5xl md:text-7xl font-black tracking-tighter text-white">{flight.destination.code}</div>
                         <div className="text-sm font-medium text-gray-400">{flight.destination.city}</div>
                         <div className="mt-1 text-2xl font-bold text-white">{formatTimeWithTimezone(flight.destination.time)}</div>
                         {flight.destination.baggage && (

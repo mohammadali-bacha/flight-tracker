@@ -142,7 +142,7 @@ export default function TravelCard({ airportName, airportCode, latitude, longitu
     };
 
     return (
-        <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-white/10 hover:shadow-2xl hover:shadow-pink-500/10">
+        <div className="group relative h-full flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-white/10 hover:shadow-2xl hover:shadow-pink-500/10">
             <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-purple-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
             <div className="relative z-10">
@@ -178,17 +178,17 @@ export default function TravelCard({ airportName, airportCode, latitude, longitu
                     </div>
                 ) : routeInfo ? (
                     <>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="rounded-xl bg-black/20 p-3 text-center">
-                                <div className="text-xs text-gray-500">Temps estimé</div>
+                        <div className="flex flex-col gap-4 flex-1 justify-center">
+                            <div className="rounded-xl bg-black/20 p-4 flex items-center justify-between">
+                                <div className="text-sm text-gray-500">Temps estimé</div>
                                 <div className="text-xl font-bold text-white">{formatDuration(routeInfo.duration)}</div>
                             </div>
-                            <div className="rounded-xl bg-black/20 p-3 text-center">
-                                <div className="text-xs text-gray-500">Distance</div>
+                            <div className="rounded-xl bg-black/20 p-4 flex items-center justify-between">
+                                <div className="text-sm text-gray-500">Distance</div>
                                 <div className="text-xl font-bold text-white">{formatDistance(routeInfo.distance)}</div>
                             </div>
-                            <div className="rounded-xl bg-black/20 p-3 text-center">
-                                <div className="text-xs text-gray-500">Trafic</div>
+                            <div className="rounded-xl bg-black/20 p-4 flex items-center justify-between">
+                                <div className="text-sm text-gray-500">Trafic</div>
                                 <div className={`text-xl font-bold ${getTrafficStatus(routeInfo.duration).color}`}>
                                     {getTrafficStatus(routeInfo.duration).text}
                                 </div>
