@@ -108,7 +108,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                     <div className="flex flex-col">
                         <span className="text-xs text-gray-400 uppercase tracking-wider mb-1">Embarquement</span>
                         <span className={`text-sm font-bold uppercase ${flight.status === 'Boarding' ? 'text-green-400 animate-pulse' :
-                                flight.status === 'In Air' || flight.status === 'Landed' ? 'text-gray-500' : 'text-white'
+                            flight.status === 'In Air' || flight.status === 'Landed' ? 'text-gray-500' : 'text-white'
                             }`}>
                             {flight.status === 'In Air' || flight.status === 'Landed' ? 'TERMINÉ' :
                                 flight.status === 'Boarding' ? 'EN COURS' : 'À VENIR'}
@@ -144,7 +144,16 @@ export default function FlightCard({ flight }: FlightCardProps) {
                                 </svg>
                             </div>
                         </div>
-                        <div className="mt-2 text-xs font-medium text-gray-400">Durée de vol estimée</div>
+                        <div className="mt-2 text-xs font-medium text-gray-400">
+                            {(() => {
+                                const start = new Date(flight.origin.time).getTime();
+                                const end = new Date(flight.destination.time).getTime();
+                                const durationMs = end - start;
+                                const hours = Math.floor(durationMs / (1000 * 60 * 60));
+                                const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+                                return `${hours}h ${minutes}m`;
+                            })()}
+                        </div>
                     </div>
 
                     {/* Destination */}
