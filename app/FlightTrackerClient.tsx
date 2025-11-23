@@ -130,7 +130,7 @@ export default function FlightTrackerClient() {
                                                 </div>
                                                 <div className="flex items-center gap-3 text-sm text-gray-300">
                                                     <div className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs">✓</div>
-                                                    <span>Message pour moi</span>
+                                                    <span>M'envoyer un bisou</span>
                                                 </div>
                                             </div>
                                         </div>
