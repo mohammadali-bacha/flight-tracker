@@ -28,7 +28,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                     <input
                         type="text"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => setQuery(e.target.value.toUpperCase())}
                         placeholder="Search by flight number (e.g., AA123), airline, or city..."
                         className="flex-1 bg-transparent px-2 py-3 text-base md:text-lg text-white placeholder-gray-500 focus:outline-none min-w-0"
                     />
