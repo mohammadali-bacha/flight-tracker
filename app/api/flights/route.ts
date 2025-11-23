@@ -177,7 +177,7 @@ export async function GET(request: Request) {
     );
 
     try {
-        const API_KEY = '18a4c9ae0ef19bfd361cb7bd9865aac3';
+        const API_KEY = '58ff6faecb3b4e541625abd8da9dbad3';
         const response = await fetch(
             `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}`
         );
