@@ -109,7 +109,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
 
                             {/* Plane Icon */}
                             <div className="absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black border-2 border-white/30 shadow-[0_0_30px_rgba(59,130,246,0.6)]">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white rotate-90 md:rotate-0">
                                     <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
                                 </svg>
                             </div>
