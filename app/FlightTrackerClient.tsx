@@ -104,11 +104,46 @@ export default function FlightTrackerClient() {
                                     />
                                 </div>
                                 <div className="lg:col-span-1">
-                                    {/* Placeholder for future feature or empty space */}
-                                    <div className="group relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-white/10 hover:shadow-2xl hover:shadow-purple-500/10 flex items-center justify-center">
-                                        <div className="text-center">
-                                            <div className="text-3xl mb-2">❤️</div>
-                                            <p className="text-sm text-gray-400">Bon voyage ma vie d'amour</p>
+                                    <div className="group relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all duration-300 hover:bg-white/10 hover:shadow-2xl hover:shadow-pink-500/10 flex flex-col justify-between">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-purple-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                                        <div className="relative z-10">
+                                            <div className="mb-4 flex items-center gap-3">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500/20 text-pink-400">
+                                                    <span className="text-xl">❤️</span>
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-white">
+                                                    {flight.status === 'Landed' ? 'Bien arrivée ?' :
+                                                        flight.status === 'In Air' ? 'Je pense à toi' :
+                                                            'Bon voyage mon amour'}
+                                                </h3>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-3 text-sm text-gray-300">
+                                                    <div className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs">✓</div>
+                                                    <span>Passeport & Billets</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-sm text-gray-300">
+                                                    <div className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs">✓</div>
+                                                    <span>Chargeur téléphone</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-sm text-gray-300">
+                                                    <div className="flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs">✓</div>
+                                                    <span>Message pour moi</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative z-10 mt-6">
+                                            <a
+                                                href={`https://www.flightradar24.com/${flight.flightNumber}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+                                            >
+                                                <span>🌍 Suivre sur la carte</span>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
