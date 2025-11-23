@@ -189,10 +189,21 @@ export async function GET(request: Request) {
         console.log('AirLabs Response Status:', response.status);
         console.log('AirLabs Data:', JSON.stringify(data).substring(0, 200) + '...'); // Log first 200 chars
 
-        // AirLabs returns data in a 'response' array
-        if (data.response && data.response.length > 0) {
-            console.log(`Found ${data.response.length} flights from AirLabs`);
-            const realFlights: Flight[] = data.response.map((apiFlight: any) => {
+        // AirLabs returns data in a 'response' field.
+        // It can be an array OR a single object depending on the query.
+        let apiFlightsArray: any[] = [];
+
+        if (data.response) {
+            if (Array.isArray(data.response)) {
+                apiFlightsArray = data.response;
+            } else {
+                apiFlightsArray = [data.response];
+            }
+        }
+
+        if (apiFlightsArray.length > 0) {
+            console.log(`Found ${apiFlightsArray.length} flights from AirLabs`);
+            const realFlights: Flight[] = apiFlightsArray.map((apiFlight: any) => {
                 const originCode = apiFlight.dep_iata;
                 const destCode = apiFlight.arr_iata;
 
