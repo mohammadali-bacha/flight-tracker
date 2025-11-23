@@ -71,12 +71,12 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         </span>
                     </div>
 
-                    {/* Route Info */}
-                    <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+                    {/* Route Info - Grid Layout for robustness */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
                         {/* Origin */}
-                        <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left min-w-0">
-                            <div className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60 md:text-7xl">{flight.origin.code}</div>
-                            <div className="mt-1 text-lg font-medium text-gray-400 truncate w-full md:text-2xl">{flight.origin.city}</div>
+                        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+                            <div className="text-6xl font-black tracking-tighter text-white md:text-7xl">{flight.origin.code}</div>
+                            <div className="mt-1 text-lg font-medium text-gray-400 truncate w-full max-w-[200px] md:max-w-none md:text-2xl">{flight.origin.city}</div>
 
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-3 md:justify-start">
                                 {flight.origin.terminal && (
@@ -98,8 +98,8 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         </div>
 
                         {/* Flight Path Visual */}
-                        <div className="flex flex-col items-center justify-center py-8 md:py-0 md:px-12 flex-shrink-0">
-                            <div className="relative flex h-24 w-1 items-center justify-center md:h-1 md:w-64 lg:w-96">
+                        <div className="flex flex-col items-center justify-center py-4 md:py-0">
+                            <div className="relative flex h-32 w-1 items-center justify-center md:h-1 md:w-full">
                                 {/* Track Line */}
                                 <div className="absolute h-full w-0.5 bg-white/10 md:h-0.5 md:w-full rounded-full" />
                                 {/* Progress Gradient */}
@@ -127,9 +127,9 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         </div>
 
                         {/* Destination */}
-                        <div className="flex-1 flex flex-col items-center md:items-end text-center md:text-right min-w-0">
-                            <div className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60 md:text-7xl">{flight.destination.code}</div>
-                            <div className="mt-1 text-lg font-medium text-gray-400 truncate w-full md:text-2xl">{flight.destination.city}</div>
+                        <div className="flex flex-col items-center md:items-end text-center md:text-right">
+                            <div className="text-6xl font-black tracking-tighter text-white md:text-7xl">{flight.destination.code}</div>
+                            <div className="mt-1 text-lg font-medium text-gray-400 truncate w-full max-w-[200px] md:max-w-none md:text-2xl">{flight.destination.city}</div>
 
                             <div className="mt-4 flex flex-wrap items-center justify-center gap-3 md:justify-end">
                                 {flight.destination.terminal && (
