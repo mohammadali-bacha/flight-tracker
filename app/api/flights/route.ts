@@ -226,7 +226,7 @@ export async function GET(request: Request) {
                 return {
                     id: `${apiFlight.flight_iata}-${apiFlight.dep_time}`,
                     flightNumber: apiFlight.flight_iata,
-                    airline: apiFlight.airline_iata || 'Unknown Airline', // AirLabs gives IATA code, name might need lookup or fallback
+                    airline: apiFlight.airline_name || apiFlight.airline_iata || 'Unknown Airline',
                     origin: {
                         code: originCode,
                         city: originAirport ? originAirport.city : originCode,

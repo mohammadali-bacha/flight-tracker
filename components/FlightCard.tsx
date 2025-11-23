@@ -73,86 +73,90 @@ export default function FlightCard({ flight }: FlightCardProps) {
                     </span>
                 </div>
 
-                {/* Route Info */}
-                <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+                {/* Detailed Info Grid */}
+                <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-8 border-t border-white/10 pt-6">
+                    {/* Recommended Arrival */}
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider mb-1">Arrivée conseillée</span>
+                        <span className="text-xl font-bold text-white">
+                            {(() => {
+                                const date = new Date(flight.origin.time);
+                                date.setHours(date.getHours() - 2);
+                                return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                            })()}
+                        </span>
+                    </div>
+
+                    {/* Terminal */}
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider mb-1">Terminal</span>
+                        <span className="text-xl font-bold text-blue-400">
+                            {flight.origin.terminal || '-'}
+                        </span>
+                    </div>
+
+                    {/* Check-in (Simulated/Generic based on Terminal) */}
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider mb-1">Enregistrement</span>
+                        <span className="text-sm font-medium text-white">
+                            {flight.origin.terminal ? `Zone ${flight.origin.terminal}` : 'Voir écrans'}
+                        </span>
+                        <span className="text-xs text-gray-500">Comptoirs -</span>
+                    </div>
+
+                    {/* Boarding Status */}
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider mb-1">Embarquement</span>
+                        <span className={`text-sm font-bold uppercase ${flight.status === 'Boarding' ? 'text-green-400 animate-pulse' :
+                                flight.status === 'In Air' || flight.status === 'Landed' ? 'text-gray-500' : 'text-white'
+                            }`}>
+                            {flight.status === 'In Air' || flight.status === 'Landed' ? 'TERMINÉ' :
+                                flight.status === 'Boarding' ? 'EN COURS' : 'À VENIR'}
+                        </span>
+                    </div>
+
+                    {/* Gate */}
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider mb-1">Porte</span>
+                        <span className="text-2xl font-black text-purple-400">
+                            {flight.origin.gate || '-'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Route Info (Simplified) */}
+                <div className="mt-8 flex flex-col gap-8 md:flex-row md:items-center md:justify-between bg-black/20 rounded-2xl p-6">
                     {/* Origin */}
                     <div className="flex-1 text-center md:text-left">
-                        <div className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60 md:text-6xl">{flight.origin.code}</div>
-                        <div className="mt-1 text-lg font-medium text-gray-400">{flight.origin.city}</div>
-
-                        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                            {flight.origin.terminal && (
-                                <span className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-400">
-                                    Term {flight.origin.terminal}
-                                </span>
-                            )}
-                            {flight.origin.gate && (
-                                <span className="rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1 text-xs font-semibold text-purple-400">
-                                    Porte {flight.origin.gate}
-                                </span>
-                            )}
-                        </div>
-
-                        <div className="mt-4 space-y-1">
-                            <div className="text-3xl font-bold text-white">{formatTimeWithTimezone(flight.origin.time)}</div>
-                            <div className="text-sm font-medium text-gray-500 uppercase tracking-wider">{formatDate(flight.origin.time)}</div>
-                        </div>
+                        <div className="text-4xl font-black tracking-tighter text-white">{flight.origin.code}</div>
+                        <div className="text-sm font-medium text-gray-400">{flight.origin.city}</div>
+                        <div className="mt-1 text-2xl font-bold text-white">{formatTimeWithTimezone(flight.origin.time)}</div>
                     </div>
 
                     {/* Flight Path Visual */}
-                    <div className="flex flex-col items-center justify-center px-4 py-6 w-full md:px-8 md:py-0 md:w-auto">
-                        <div className="relative flex h-40 w-1 items-center justify-center md:h-1 md:w-64">
-                            {/* Track Line */}
-                            <div className="absolute h-full w-1 bg-white/10 md:h-1 md:w-full rounded-full" />
-                            {/* Progress Gradient */}
-                            <div className="absolute h-full w-1 bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500 opacity-80 md:h-1 md:w-full md:bg-gradient-to-r rounded-full" />
-
-                            {/* Plane Icon */}
-                            <div className="absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black border-2 border-white/30 shadow-[0_0_30px_rgba(59,130,246,0.6)]">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white rotate-90 md:rotate-0">
+                    <div className="flex flex-col items-center justify-center px-4 w-full md:w-auto">
+                        <div className="relative flex h-1 w-full items-center justify-center md:w-48">
+                            <div className="absolute h-full w-full bg-white/10 rounded-full" />
+                            <div className="absolute h-full w-full bg-gradient-to-r from-blue-500 to-purple-500 opacity-50 rounded-full" />
+                            <div className="absolute z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black border border-white/30">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white rotate-90 md:rotate-0">
                                     <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
                                 </svg>
                             </div>
-
-                            {/* Dots */}
-                            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] md:left-0 md:-translate-x-1.5 md:top-1/2 md:-translate-y-1/2" />
-                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.8)] md:left-auto md:right-0 md:translate-x-1.5 md:top-1/2 md:-translate-y-1/2" />
                         </div>
-                        <div className="mt-6 flex items-center gap-3 rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-md border border-white/10 shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4 text-blue-400">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>8h 35m</span>
-                        </div>
+                        <div className="mt-2 text-xs font-medium text-gray-400">Durée de vol estimée</div>
                     </div>
 
                     {/* Destination */}
                     <div className="flex-1 text-center md:text-right">
-                        <div className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60 md:text-6xl">{flight.destination.code}</div>
-                        <div className="mt-1 text-lg font-medium text-gray-400">{flight.destination.city}</div>
-
-                        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 md:justify-end">
-                            {flight.destination.terminal && (
-                                <span className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-400">
-                                    Term {flight.destination.terminal}
-                                </span>
-                            )}
-                            {flight.destination.gate && (
-                                <span className="rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1 text-xs font-semibold text-purple-400">
-                                    Porte {flight.destination.gate}
-                                </span>
-                            )}
-                            {flight.destination.baggage && (
-                                <span className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-400 animate-pulse">
-                                    Tapis {flight.destination.baggage}
-                                </span>
-                            )}
-                        </div>
-
-                        <div className="mt-4 space-y-1">
-                            <div className="text-3xl font-bold text-white">{formatTimeWithTimezone(flight.destination.time)}</div>
-                            <div className="text-sm font-medium text-gray-500 uppercase tracking-wider">{formatDate(flight.destination.time)}</div>
-                        </div>
+                        <div className="text-4xl font-black tracking-tighter text-white">{flight.destination.code}</div>
+                        <div className="text-sm font-medium text-gray-400">{flight.destination.city}</div>
+                        <div className="mt-1 text-2xl font-bold text-white">{formatTimeWithTimezone(flight.destination.time)}</div>
+                        {flight.destination.baggage && (
+                            <div className="mt-2 inline-block rounded bg-yellow-500/10 px-2 py-1 text-xs font-bold text-yellow-400 animate-pulse">
+                                Tapis {flight.destination.baggage}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
