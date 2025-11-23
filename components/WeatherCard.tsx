@@ -51,7 +51,7 @@ export default function WeatherCard({ city, latitude, longitude }: WeatherCardPr
         // 95: Thunderstorm: Slight or moderate
 
         if (code === 0) return isDay ? '☀️' : '🌙';
-        if (code >= 1 && code <= 3) return isDay ? 'Dg' : '☁️';
+        if (code >= 1 && code <= 3) return isDay ? '🌤️' : '☁️';
         if (code >= 45 && code <= 48) return '🌫️';
         if (code >= 51 && code <= 67) return '🌧️';
         if (code >= 71 && code <= 77) return '❄️';
