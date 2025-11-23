@@ -177,16 +177,19 @@ export async function GET(request: Request) {
     );
 
     try {
-        const API_KEY = '58ff6faecb3b4e541625abd8da9dbad3';
+        // AirLabs API
+        const API_KEY = 'd1d40d2b-4015-46a3-b77c-01096738e6fd';
+
         const response = await fetch(
-            `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}`
+            `https://airlabs.co/api/v9/flight?flight_iata=${query}&api_key=${API_KEY}`
         );
         const data = await response.json();
 
-        if (data.data && data.data.length > 0) {
-            const realFlights: Flight[] = data.data.map((apiFlight: any) => {
-                const originCode = apiFlight.departure.iata;
-                const destCode = apiFlight.arrival.iata;
+        // AirLabs returns data in a 'response' array
+        if (data.response && data.response.length > 0) {
+            const realFlights: Flight[] = data.response.map((apiFlight: any) => {
+                const originCode = apiFlight.dep_iata;
+                const destCode = apiFlight.arr_iata;
 
                 const originAirport = AIRPORTS[originCode];
                 const destAirport = AIRPORTS[destCode];
@@ -194,37 +197,43 @@ export async function GET(request: Request) {
                 const originCoords = originAirport ? { lat: originAirport.lat, lon: originAirport.lon } : { lat: 0, lon: 0 };
                 const destCoords = destAirport ? { lat: destAirport.lat, lon: destAirport.lon } : { lat: 0, lon: 0 };
 
+                // Map status
+                let status: Flight['status'] = 'Scheduled';
+                switch (apiFlight.status) {
+                    case 'active': status = 'In Air'; break;
+                    case 'landed': status = 'Landed'; break;
+                    case 'cancelled': status = 'Cancelled'; break;
+                    case 'scheduled': status = 'On Time'; break;
+                    default: status = 'Scheduled';
+                }
+
                 return {
-                    id: `${apiFlight.flight.iata}-${apiFlight.departure.scheduled}`,
-                    flightNumber: apiFlight.flight.iata,
-                    airline: apiFlight.airline.name,
+                    id: `${apiFlight.flight_iata}-${apiFlight.dep_time}`,
+                    flightNumber: apiFlight.flight_iata,
+                    airline: apiFlight.airline_iata || 'Unknown Airline', // AirLabs gives IATA code, name might need lookup or fallback
                     origin: {
                         code: originCode,
-                        city: apiFlight.departure.airport,
-                        time: apiFlight.departure.estimated || apiFlight.departure.actual || apiFlight.departure.scheduled, // Use estimated/actual if available
-                        timezone: apiFlight.departure.timezone || 'UTC',
+                        city: originAirport ? originAirport.city : originCode,
+                        time: apiFlight.dep_estimated || apiFlight.dep_actual || apiFlight.dep_time,
+                        timezone: 'UTC', // AirLabs doesn't always provide timezone directly in this endpoint, defaulting to UTC or need logic
                         latitude: originCoords.lat,
                         longitude: originCoords.lon,
-                        terminal: apiFlight.departure.terminal,
-                        gate: apiFlight.departure.gate,
+                        terminal: apiFlight.dep_terminal,
+                        gate: apiFlight.dep_gate,
                     },
                     destination: {
                         code: destCode,
-                        city: apiFlight.arrival.airport,
-                        time: apiFlight.arrival.estimated || apiFlight.arrival.actual || apiFlight.arrival.scheduled, // Use estimated/actual if available
-                        timezone: apiFlight.arrival.timezone || 'UTC',
+                        city: destAirport ? destAirport.city : destCode,
+                        time: apiFlight.arr_estimated || apiFlight.arr_actual || apiFlight.arr_time,
+                        timezone: 'UTC',
                         latitude: destCoords.lat,
                         longitude: destCoords.lon,
-                        terminal: apiFlight.arrival.terminal,
-                        gate: apiFlight.arrival.gate,
-                        baggage: apiFlight.arrival.baggage, // Map baggage info
+                        terminal: apiFlight.arr_terminal,
+                        gate: apiFlight.arr_gate,
+                        baggage: apiFlight.arr_baggage,
                     },
-                    status: apiFlight.flight_status === 'active' ? 'In Air' :
-                        apiFlight.flight_status === 'landed' ? 'Landed' :
-                            apiFlight.flight_status === 'cancelled' ? 'Cancelled' :
-                                apiFlight.flight_status === 'scheduled' ? 'On Time' :
-                                    apiFlight.flight_status.charAt(0).toUpperCase() + apiFlight.flight_status.slice(1),
-                    delay: apiFlight.departure.delay || 0,
+                    status: status,
+                    delay: apiFlight.dep_delayed || 0,
                 };
             });
 
@@ -232,12 +241,11 @@ export async function GET(request: Request) {
             const uniqueFlights = Array.from(new Map(realFlights.map(item => [item.id, item])).values());
 
             if (uniqueFlights.length > 0) {
-                // STRICTLY return only the first flight found to avoid duplicates in UI
                 return NextResponse.json([uniqueFlights[0]]);
             }
         }
     } catch (error) {
-        console.error('Real API failed, falling back to mock:', error);
+        console.error('AirLabs API failed, falling back to mock:', error);
     }
 
     // Simulate network delay for mock
