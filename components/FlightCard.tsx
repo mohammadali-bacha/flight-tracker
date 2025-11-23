@@ -144,15 +144,18 @@ export default function FlightCard({ flight }: FlightCardProps) {
                                 </svg>
                             </div>
                         </div>
-                        <div className="mt-2 text-xs font-medium text-gray-400">
-                            {(() => {
-                                const start = new Date(flight.origin.time).getTime();
-                                const end = new Date(flight.destination.time).getTime();
-                                const durationMs = end - start;
-                                const hours = Math.floor(durationMs / (1000 * 60 * 60));
-                                const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-                                return `${hours}h ${minutes}m`;
-                            })()}
+                        <div className="mt-4 flex flex-col items-center gap-1">
+                            <span className="text-[10px] uppercase tracking-wider text-gray-500">Durée de vol estimée</span>
+                            <span className="text-sm font-bold text-white">
+                                {(() => {
+                                    const start = new Date(flight.origin.time).getTime();
+                                    const end = new Date(flight.destination.time).getTime();
+                                    const durationMs = end - start;
+                                    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+                                    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+                                    return `${hours}h ${minutes}m`;
+                                })()}
+                            </span>
                         </div>
                     </div>
 
