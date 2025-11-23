@@ -180,13 +180,18 @@ export async function GET(request: Request) {
         // AirLabs API
         const API_KEY = 'd1d40d2b-4015-46a3-b77c-01096738e6fd';
 
-        const response = await fetch(
-            `https://airlabs.co/api/v9/flight?flight_iata=${query}&api_key=${API_KEY}`
-        );
+        const url = `https://airlabs.co/api/v9/flight?flight_iata=${query}&api_key=${API_KEY}`;
+        console.log(`Calling AirLabs API for query: ${query}`);
+
+        const response = await fetch(url);
         const data = await response.json();
+
+        console.log('AirLabs Response Status:', response.status);
+        console.log('AirLabs Data:', JSON.stringify(data).substring(0, 200) + '...'); // Log first 200 chars
 
         // AirLabs returns data in a 'response' array
         if (data.response && data.response.length > 0) {
+            console.log(`Found ${data.response.length} flights from AirLabs`);
             const realFlights: Flight[] = data.response.map((apiFlight: any) => {
                 const originCode = apiFlight.dep_iata;
                 const destCode = apiFlight.arr_iata;
