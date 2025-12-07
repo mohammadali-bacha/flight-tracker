@@ -250,9 +250,34 @@ export async function GET(request: Request) {
                 // Deduplicate flights based on ID
                 const uniqueFlights = Array.from(new Map(realFlights.map(item => [item.id, item])).values());
 
-                if (uniqueFlights.length > 0) {
-                    return NextResponse.json([uniqueFlights[0]]);
+            if (uniqueFlights.length > 0) {
+                // Sort flights by scheduled departure time (ascending)
+                uniqueFlights.sort((a, b) => new Date(a.origin.time).getTime() - new Date(b.origin.time).getTime());
+
+                // Find the most relevant flight:
+                // We want the flight that is currently active, or the next upcoming one.
+                // If no upcoming/active flight, we show the most recent past one.
+                const now = new Date().getTime();
+                
+                // Filter for flights that are either in the future OR within the last 24 hours
+                const relevantFlights = uniqueFlights.filter(f => {
+                    const time = new Date(f.origin.time).getTime();
+                    return time > (now - 24 * 60 * 60 * 1000);
+                });
+
+                let selectedFlight;
+                
+                if (relevantFlights.length > 0) {
+                    // If we have relevant flights, pick the first one (soonest upcoming or most recent active)
+                    selectedFlight = relevantFlights[0];
+                } else {
+                    // If all flights are old (>24h ago), pick the last one (the most recent among the old ones)
+                    selectedFlight = uniqueFlights[uniqueFlights.length - 1];
                 }
+
+                console.log(`Selected flight date: ${selectedFlight.origin.time} for query ${query}`);
+                return NextResponse.json([selectedFlight]);
+            }
             }
         } else {
              console.warn('AVIATIONSTACK_API_KEY is not set');

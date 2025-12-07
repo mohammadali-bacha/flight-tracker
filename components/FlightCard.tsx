@@ -66,6 +66,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         <div className="flex flex-col">
                             <span className="text-lg font-bold text-white">{flight.flightNumber}</span>
                             <span className="text-sm text-gray-400">{flight.airline}</span>
+                            <span className="text-xs text-blue-300 mt-1">{formatDate(flight.origin.time)}</span>
                         </div>
                     </div>
                     <span className={`rounded-full border px-4 py-1.5 text-sm font-semibold tracking-wide shadow-sm backdrop-blur-md ${getStatusColor(flight.status)}`}>
