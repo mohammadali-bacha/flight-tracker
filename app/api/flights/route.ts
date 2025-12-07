@@ -191,23 +191,36 @@ export async function GET(request: Request) {
 
             console.log(`Fetching flights for ${todayStr} and ${tomorrowStr}`);
 
-            // Fetch Today and Tomorrow in parallel
-            const [responseToday, responseTomorrow] = await Promise.all([
-                fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${todayStr}`),
-                fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${tomorrowStr}`)
-            ]);
+            const fetchFlightData = async (dateStr: string) => {
+                try {
+                    const response = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${dateStr}`);
+                    if (!response.ok) return null;
+                    return await response.json();
+                } catch (error) {
+                    console.error(`Failed to fetch for ${dateStr}:`, error);
+                    return null;
+                }
+            };
 
-            const [dataToday, dataTomorrow] = await Promise.all([
-                responseToday.json(),
-                responseTomorrow.json()
-            ]);
+            // Fetch Today first
+            console.log(`Fetching flights for Today: ${todayStr}`);
+            const dataToday = await fetchFlightData(todayStr);
 
             let allApiFlights: any[] = [];
             
-            if (dataToday.data && Array.isArray(dataToday.data)) {
+            if (dataToday && dataToday.data && Array.isArray(dataToday.data)) {
                 allApiFlights = [...allApiFlights, ...dataToday.data];
             }
-            if (dataTomorrow.data && Array.isArray(dataTomorrow.data)) {
+
+            // Check if we found a RELEVANT flight today (Active or Future)
+            // If not, or if we want to be sure, we check Tomorrow.
+            // But to avoid waiting, let's fetch tomorrow only if today yielded nothing or just past flights.
+            // Actually, for safety and simplicity given the user issue, let's fetch tomorrow in parallel but safely handled.
+            
+            console.log(`Fetching flights for Tomorrow: ${tomorrowStr}`);
+            const dataTomorrow = await fetchFlightData(tomorrowStr);
+
+            if (dataTomorrow && dataTomorrow.data && Array.isArray(dataTomorrow.data)) {
                 allApiFlights = [...allApiFlights, ...dataTomorrow.data];
             }
 
