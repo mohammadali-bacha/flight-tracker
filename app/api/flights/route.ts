@@ -192,34 +192,36 @@ export async function GET(request: Request) {
             console.log(`Fetching flights for ${todayStr} and ${tomorrowStr}`);
 
             const fetchFlightData = async (dateStr: string) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+
                 try {
-                    const response = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${dateStr}`);
+                    const response = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${dateStr}`, {
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
                     if (!response.ok) return null;
                     return await response.json();
                 } catch (error) {
+                    clearTimeout(timeoutId);
                     console.error(`Failed to fetch for ${dateStr}:`, error);
                     return null;
                 }
             };
 
-            // Fetch Today first
-            console.log(`Fetching flights for Today: ${todayStr}`);
-            const dataToday = await fetchFlightData(todayStr);
+            // Fetch Today and Tomorrow in parallel
+            console.log(`Fetching flights for Today (${todayStr}) and Tomorrow (${tomorrowStr}) in parallel`);
+            
+            const [dataToday, dataTomorrow] = await Promise.all([
+                fetchFlightData(todayStr),
+                fetchFlightData(tomorrowStr)
+            ]);
 
             let allApiFlights: any[] = [];
             
             if (dataToday && dataToday.data && Array.isArray(dataToday.data)) {
                 allApiFlights = [...allApiFlights, ...dataToday.data];
             }
-
-            // Check if we found a RELEVANT flight today (Active or Future)
-            // If not, or if we want to be sure, we check Tomorrow.
-            // But to avoid waiting, let's fetch tomorrow only if today yielded nothing or just past flights.
-            // Actually, for safety and simplicity given the user issue, let's fetch tomorrow in parallel but safely handled.
-            
-            console.log(`Fetching flights for Tomorrow: ${tomorrowStr}`);
-            const dataTomorrow = await fetchFlightData(tomorrowStr);
-
             if (dataTomorrow && dataTomorrow.data && Array.isArray(dataTomorrow.data)) {
                 allApiFlights = [...allApiFlights, ...dataTomorrow.data];
             }
@@ -330,7 +332,7 @@ export async function GET(request: Request) {
     }
 
     // Simulate network delay for mock if API failed or no key
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    // await new Promise((resolve) => setTimeout(resolve, 800)); // Removed to improve speed
 
     return NextResponse.json(filteredFlights);
 }
