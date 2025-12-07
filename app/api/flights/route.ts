@@ -177,94 +177,92 @@ export async function GET(request: Request) {
     );
 
     try {
-        // AirLabs API
-        const API_KEY = 'd1d40d2b-4015-46a3-b77c-01096738e6fd';
+        // Aviationstack API
+        const API_KEY = process.env.AVIATIONSTACK_API_KEY;
 
-        const url = `https://airlabs.co/api/v9/flight?flight_iata=${query}&api_key=${API_KEY}`;
-        console.log(`Calling AirLabs API for query: ${query}`);
+        if (API_KEY) {
+            const url = `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}`;
+            console.log(`Calling Aviationstack API for query: ${query}`);
 
-        const response = await fetch(url);
-        const data = await response.json();
+            const response = await fetch(url);
+            const data = await response.json();
 
-        console.log('AirLabs Response Status:', response.status);
-        console.log('AirLabs Data:', JSON.stringify(data).substring(0, 200) + '...'); // Log first 200 chars
+            // console.log('Aviationstack Response Status:', response.status);
+            // console.log('Aviationstack Data:', JSON.stringify(data).substring(0, 200) + '...');
 
-        // AirLabs returns data in a 'response' field.
-        // It can be an array OR a single object depending on the query.
-        let apiFlightsArray: any[] = [];
+            if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+                console.log(`Found ${data.data.length} flights from Aviationstack`);
+                const realFlights: Flight[] = data.data.map((apiFlight: any) => {
+                    const originCode = apiFlight.departure.iata;
+                    const destCode = apiFlight.arrival.iata;
 
-        if (data.response) {
-            if (Array.isArray(data.response)) {
-                apiFlightsArray = data.response;
-            } else {
-                apiFlightsArray = [data.response];
-            }
-        }
+                    const originAirport = AIRPORTS[originCode];
+                    const destAirport = AIRPORTS[destCode];
 
-        if (apiFlightsArray.length > 0) {
-            console.log(`Found ${apiFlightsArray.length} flights from AirLabs`);
-            const realFlights: Flight[] = apiFlightsArray.map((apiFlight: any) => {
-                const originCode = apiFlight.dep_iata;
-                const destCode = apiFlight.arr_iata;
+                    const originCoords = originAirport ? { lat: originAirport.lat, lon: originAirport.lon } : { lat: 0, lon: 0 };
+                    const destCoords = destAirport ? { lat: destAirport.lat, lon: destAirport.lon } : { lat: 0, lon: 0 };
 
-                const originAirport = AIRPORTS[originCode];
-                const destAirport = AIRPORTS[destCode];
+                    // Map status
+                    let status: Flight['status'] = 'Scheduled';
+                    switch (apiFlight.flight_status) {
+                        case 'active': status = 'In Air'; break;
+                        case 'landed': status = 'Landed'; break;
+                        case 'cancelled': status = 'Cancelled'; break;
+                        case 'scheduled': status = 'On Time'; break;
+                        case 'incident': status = 'Delayed'; break; // Approximate
+                        case 'diverted': status = 'Delayed'; break; // Approximate
+                        default: status = 'Scheduled';
+                    }
 
-                const originCoords = originAirport ? { lat: originAirport.lat, lon: originAirport.lon } : { lat: 0, lon: 0 };
-                const destCoords = destAirport ? { lat: destAirport.lat, lon: destAirport.lon } : { lat: 0, lon: 0 };
+                    // Calculate delay if available
+                    const delay = apiFlight.departure.delay || 0;
 
-                // Map status
-                let status: Flight['status'] = 'Scheduled';
-                switch (apiFlight.status) {
-                    case 'active': status = 'In Air'; break;
-                    case 'landed': status = 'Landed'; break;
-                    case 'cancelled': status = 'Cancelled'; break;
-                    case 'scheduled': status = 'On Time'; break;
-                    default: status = 'Scheduled';
+                    return {
+                        id: `${apiFlight.flight.iata}-${apiFlight.departure.scheduled}`,
+                        flightNumber: apiFlight.flight.iata,
+                        airline: apiFlight.airline.name || 'Unknown Airline',
+                        origin: {
+                            code: originCode,
+                            city: originAirport ? originAirport.city : originCode,
+                            time: apiFlight.departure.estimated || apiFlight.departure.scheduled,
+                            timezone: apiFlight.departure.timezone || 'UTC',
+                            latitude: originCoords.lat,
+                            longitude: originCoords.lon,
+                            terminal: apiFlight.departure.terminal,
+                            gate: apiFlight.departure.gate,
+                        },
+                        destination: {
+                            code: destCode,
+                            city: destAirport ? destAirport.city : destCode,
+                            time: apiFlight.arrival.estimated || apiFlight.arrival.scheduled,
+                            timezone: apiFlight.arrival.timezone || 'UTC',
+                            latitude: destCoords.lat,
+                            longitude: destCoords.lon,
+                            terminal: apiFlight.arrival.terminal,
+                            gate: apiFlight.arrival.gate,
+                            baggage: apiFlight.arrival.baggage,
+                        },
+                        status: status,
+                        delay: delay,
+                    };
+                });
+
+                // Deduplicate flights based on ID
+                const uniqueFlights = Array.from(new Map(realFlights.map(item => [item.id, item])).values());
+
+                if (uniqueFlights.length > 0) {
+                    return NextResponse.json([uniqueFlights[0]]);
                 }
-
-                return {
-                    id: `${apiFlight.flight_iata}-${apiFlight.dep_time}`,
-                    flightNumber: apiFlight.flight_iata,
-                    airline: apiFlight.airline_name || apiFlight.airline_iata || 'Unknown Airline',
-                    origin: {
-                        code: originCode,
-                        city: originAirport ? originAirport.city : originCode,
-                        time: apiFlight.dep_estimated || apiFlight.dep_actual || apiFlight.dep_time,
-                        timezone: 'UTC', // AirLabs doesn't always provide timezone directly in this endpoint, defaulting to UTC or need logic
-                        latitude: originCoords.lat,
-                        longitude: originCoords.lon,
-                        terminal: apiFlight.dep_terminal,
-                        gate: apiFlight.dep_gate,
-                    },
-                    destination: {
-                        code: destCode,
-                        city: destAirport ? destAirport.city : destCode,
-                        time: apiFlight.arr_estimated || apiFlight.arr_actual || apiFlight.arr_time,
-                        timezone: 'UTC',
-                        latitude: destCoords.lat,
-                        longitude: destCoords.lon,
-                        terminal: apiFlight.arr_terminal,
-                        gate: apiFlight.arr_gate,
-                        baggage: apiFlight.arr_baggage,
-                    },
-                    status: status,
-                    delay: apiFlight.dep_delayed || 0,
-                };
-            });
-
-            // Deduplicate flights based on ID
-            const uniqueFlights = Array.from(new Map(realFlights.map(item => [item.id, item])).values());
-
-            if (uniqueFlights.length > 0) {
-                return NextResponse.json([uniqueFlights[0]]);
             }
+        } else {
+             console.warn('AVIATIONSTACK_API_KEY is not set');
         }
+
     } catch (error) {
-        console.error('AirLabs API failed, falling back to mock:', error);
+        console.error('Aviationstack API failed, falling back to mock:', error);
     }
 
-    // Simulate network delay for mock
+    // Simulate network delay for mock if API failed or no key
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     return NextResponse.json(filteredFlights);
