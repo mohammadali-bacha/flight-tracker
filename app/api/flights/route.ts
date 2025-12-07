@@ -35,6 +35,46 @@ export interface Flight {
 
 const MOCK_FLIGHTS: Flight[] = [
     {
+        id: 'mock-transavia',
+        flightNumber: 'TO3058',
+        airline: 'Transavia France',
+        origin: {
+            code: 'ORY',
+            city: 'Paris (Orly)',
+            time: (() => {
+                // Generate a date for tomorrow at 15:15
+                const date = new Date();
+                date.setDate(date.getDate() + 1);
+                date.setHours(15, 15, 0, 0);
+                return date.toISOString(); // 2025-12-08T15:15:00.000Z roughly
+            })(),
+            timezone: 'CET',
+            latitude: 48.7233,
+            longitude: 2.3794,
+            terminal: '3',
+            gate: 'D12',
+        },
+        destination: {
+            code: 'FEZ',
+            city: 'Fès',
+            time: (() => {
+                // Generate a date for tomorrow at 18:10
+                const date = new Date();
+                date.setDate(date.getDate() + 1);
+                date.setHours(18, 10, 0, 0);
+                return date.toISOString();
+            })(),
+            timezone: 'WET',
+            latitude: 33.9273,
+            longitude: -4.9780,
+            terminal: '1',
+            gate: '-',
+            baggage: '4',
+        },
+        status: 'Scheduled',
+        delay: 0,
+    },
+    {
         id: '1',
         flightNumber: 'AA123',
         airline: 'American Airlines',
@@ -193,9 +233,10 @@ export async function GET(request: Request) {
 
             const fetchFlightData = async (dateStr: string) => {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout to be safe within Netlify 10s limit (2 requests parallel is fine, but safety first)
+                const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s VERY AGGRESSIVE timeout to prevent Netlify from killing the function. If API is slow, use mock.
 
                 try {
+                    // console.log(`Starting fetch for ${dateStr}`);
                     const response = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${dateStr}`, {
                         signal: controller.signal
                     });
@@ -204,7 +245,7 @@ export async function GET(request: Request) {
                     return await response.json();
                 } catch (error) {
                     clearTimeout(timeoutId);
-                    // console.error(`Failed to fetch for ${dateStr}:`, error); // Reduce noise
+                    // console.error(`Fetch timed out or failed for ${dateStr}`);
                     return null;
                 }
             };
