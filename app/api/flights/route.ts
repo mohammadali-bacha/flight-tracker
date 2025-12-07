@@ -254,29 +254,39 @@ export async function GET(request: Request) {
                 // Sort flights by scheduled departure time (ascending)
                 uniqueFlights.sort((a, b) => new Date(a.origin.time).getTime() - new Date(b.origin.time).getTime());
 
-                // Find the most relevant flight:
-                // We want the flight that is currently active, or the next upcoming one.
-                // If no upcoming/active flight, we show the most recent past one.
-                const now = new Date().getTime();
-                
-                // Filter for flights that are either in the future OR within the last 24 hours
-                const relevantFlights = uniqueFlights.filter(f => {
-                    const time = new Date(f.origin.time).getTime();
-                    return time > (now - 24 * 60 * 60 * 1000);
-                });
+                // Priority Logic:
+                // 1. Active flights (In Air / Boarding)
+                // 2. Future flights (Scheduled / On Time / Delayed)
+                // 3. Recent past flights (Landed / Cancelled)
 
-                let selectedFlight;
-                
-                if (relevantFlights.length > 0) {
-                    // If we have relevant flights, pick the first one (soonest upcoming or most recent active)
-                    selectedFlight = relevantFlights[0];
-                } else {
-                    // If all flights are old (>24h ago), pick the last one (the most recent among the old ones)
-                    selectedFlight = uniqueFlights[uniqueFlights.length - 1];
+                const now = new Date().getTime();
+
+                // Check for active flights
+                const activeFlight = uniqueFlights.find(f => 
+                    f.status === 'In Air' || f.status === 'Boarding'
+                );
+
+                if (activeFlight) {
+                    console.log(`Selected ACTIVE flight: ${activeFlight.origin.time}`);
+                    return NextResponse.json([activeFlight]);
                 }
 
-                console.log(`Selected flight date: ${selectedFlight.origin.time} for query ${query}`);
-                return NextResponse.json([selectedFlight]);
+                // Check for future flights (departure time > now - 4 hours to include delayed/just departed)
+                // We use a small buffer (4h) to keep showing a flight that just left if it's not marked "active" yet for some reason
+                const futureFlights = uniqueFlights.filter(f => 
+                    new Date(f.origin.time).getTime() > (now - 4 * 60 * 60 * 1000)
+                );
+
+                if (futureFlights.length > 0) {
+                    // Pick the soonest upcoming flight
+                    console.log(`Selected FUTURE flight: ${futureFlights[0].origin.time}`);
+                    return NextResponse.json([futureFlights[0]]);
+                }
+
+                // If no active or future flights, return the most recent past flight
+                const mostRecentPast = uniqueFlights[uniqueFlights.length - 1];
+                console.log(`Selected PAST flight: ${mostRecentPast.origin.time}`);
+                return NextResponse.json([mostRecentPast]);
             }
             }
         } else {
