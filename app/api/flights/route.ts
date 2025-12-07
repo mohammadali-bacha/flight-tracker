@@ -193,7 +193,7 @@ export async function GET(request: Request) {
 
             const fetchFlightData = async (dateStr: string) => {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+                const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout to be safe within Netlify 10s limit (2 requests parallel is fine, but safety first)
 
                 try {
                     const response = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${dateStr}`, {
@@ -204,7 +204,7 @@ export async function GET(request: Request) {
                     return await response.json();
                 } catch (error) {
                     clearTimeout(timeoutId);
-                    console.error(`Failed to fetch for ${dateStr}:`, error);
+                    // console.error(`Failed to fetch for ${dateStr}:`, error); // Reduce noise
                     return null;
                 }
             };
@@ -212,18 +212,29 @@ export async function GET(request: Request) {
             // Fetch Today and Tomorrow in parallel
             console.log(`Fetching flights for Today (${todayStr}) and Tomorrow (${tomorrowStr}) in parallel`);
             
-            const [dataToday, dataTomorrow] = await Promise.all([
+            // Try fetching, but if it takes too long, just continue with whatever we have (or mock)
+            // We use Promise.allSettled to ensure one failure doesn't break the other
+            const results = await Promise.allSettled([
                 fetchFlightData(todayStr),
                 fetchFlightData(tomorrowStr)
             ]);
 
             let allApiFlights: any[] = [];
             
-            if (dataToday && dataToday.data && Array.isArray(dataToday.data)) {
-                allApiFlights = [...allApiFlights, ...dataToday.data];
+            // Process first result (Today)
+            if (results[0].status === 'fulfilled' && results[0].value) {
+                 const dataToday = results[0].value;
+                 if (dataToday && dataToday.data && Array.isArray(dataToday.data)) {
+                    allApiFlights = [...allApiFlights, ...dataToday.data];
+                }
             }
-            if (dataTomorrow && dataTomorrow.data && Array.isArray(dataTomorrow.data)) {
-                allApiFlights = [...allApiFlights, ...dataTomorrow.data];
+
+            // Process second result (Tomorrow)
+            if (results[1].status === 'fulfilled' && results[1].value) {
+                const dataTomorrow = results[1].value;
+                if (dataTomorrow && dataTomorrow.data && Array.isArray(dataTomorrow.data)) {
+                    allApiFlights = [...allApiFlights, ...dataTomorrow.data];
+                }
             }
 
             if (allApiFlights.length > 0) {
