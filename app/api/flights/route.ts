@@ -193,7 +193,7 @@ export async function GET(request: Request) {
 
             const fetchFlightData = async (dateStr: string) => {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s VERY AGGRESSIVE timeout to prevent Netlify from killing the function. If API is slow, use mock.
+                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s individual timeout
 
                 try {
                     // console.log(`Starting fetch for ${dateStr}`);
@@ -213,34 +213,36 @@ export async function GET(request: Request) {
             // Fetch Today and Tomorrow in parallel
             console.log(`Fetching flights for Today (${todayStr}) and Tomorrow (${tomorrowStr}) in parallel`);
             
-            // Try fetching, but if it takes too long, just continue with whatever we have (or mock)
-            // We use Promise.allSettled to ensure one failure doesn't break the other
-            const results = await Promise.allSettled([
-                fetchFlightData(todayStr),
-                fetchFlightData(tomorrowStr)
-            ]);
+            // Create a single timeout promise that rejects after 8 seconds (Netlify limit is 10s)
+            const globalTimeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Global API timeout')), 8000)
+            );
 
-            let allApiFlights: any[] = [];
-            
-            // Process first result (Today)
-            if (results[0].status === 'fulfilled' && results[0].value) {
-                 const dataToday = results[0].value;
-                 if (dataToday && dataToday.data && Array.isArray(dataToday.data)) {
-                    allApiFlights = [...allApiFlights, ...dataToday.data];
+            // Race the data fetching against the global timeout
+            // We fetch Today first, then Tomorrow sequentially to avoid rate limits, but wrapped in one logic block
+            const fetchAllData = async () => {
+                const todayData = await fetchFlightData(todayStr);
+                // If today yielded no results (or we want to be thorough), fetch tomorrow. 
+                // For speed on free tier, let's fetch tomorrow anyway but sequentially.
+                const tomorrowData = await fetchFlightData(tomorrowStr);
+                return { todayData, tomorrowData };
+            };
+
+            try {
+                const { todayData, tomorrowData } = await Promise.race([fetchAllData(), globalTimeout]) as any;
+
+                let allApiFlights: any[] = [];
+                
+                if (todayData && todayData.data && Array.isArray(todayData.data)) {
+                    allApiFlights = [...allApiFlights, ...todayData.data];
                 }
-            }
-
-            // Process second result (Tomorrow)
-            if (results[1].status === 'fulfilled' && results[1].value) {
-                const dataTomorrow = results[1].value;
-                if (dataTomorrow && dataTomorrow.data && Array.isArray(dataTomorrow.data)) {
-                    allApiFlights = [...allApiFlights, ...dataTomorrow.data];
+                if (tomorrowData && tomorrowData.data && Array.isArray(tomorrowData.data)) {
+                    allApiFlights = [...allApiFlights, ...tomorrowData.data];
                 }
-            }
 
-            if (allApiFlights.length > 0) {
-                console.log(`Found ${allApiFlights.length} flights total from Aviationstack`);
-                const realFlights: Flight[] = allApiFlights.map((apiFlight: any) => {
+                if (allApiFlights.length > 0) {
+                    console.log(`Found ${allApiFlights.length} flights total from Aviationstack`);
+                    const realFlights: Flight[] = allApiFlights.map((apiFlight: any) => {
                     const originCode = apiFlight.departure.iata;
                     const destCode = apiFlight.arrival.iata;
 
@@ -334,7 +336,10 @@ export async function GET(request: Request) {
                 console.log(`Selected PAST flight: ${mostRecentPast.origin.time}`);
                 return NextResponse.json([mostRecentPast]);
             }
-
+            
+            } catch (error) {
+                console.error('API logic failed or timed out, falling back to mock', error);
+            }
         } else {
              console.warn('AVIATIONSTACK_API_KEY is not set');
         }
