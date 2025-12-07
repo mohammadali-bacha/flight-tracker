@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import SearchForm from '@/components/SearchForm';
 import FlightCard from '@/components/FlightCard';
 import TravelCard from '@/components/TravelCard';
@@ -9,6 +9,7 @@ import WeatherCard from '@/components/WeatherCard';
 import { Flight } from '@/app/api/flights/route';
 
 export default function FlightTrackerClient() {
+    const router = useRouter();
     const [flights, setFlights] = useState<Flight[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -19,7 +20,12 @@ export default function FlightTrackerClient() {
 
         useEffect(() => {
             const query = searchParams.get('flight') || searchParams.get('q');
-            if (query && !hasSearched) {
+            if (query) {
+                // If we already have results for this query, don't re-fetch
+                const currentFlight = flights[0];
+                if (currentFlight && currentFlight.flightNumber === query) {
+                    return;
+                }
                 handleSearch(query);
             }
         }, [searchParams]);
@@ -40,6 +46,12 @@ export default function FlightTrackerClient() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const onSearchSubmit = (query: string) => {
+        const params = new URLSearchParams();
+        params.set('flight', query);
+        router.push(`?${params.toString()}`);
     };
 
     return (
@@ -70,7 +82,7 @@ export default function FlightTrackerClient() {
                 </div>
 
                 {/* Search */}
-                <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+                <SearchForm onSearch={onSearchSubmit} isLoading={isLoading} />
 
                 {/* Results */}
                 <div className="w-full space-y-6">
