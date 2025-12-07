@@ -35,36 +35,6 @@ export interface Flight {
 
 const MOCK_FLIGHTS: Flight[] = [
     {
-        id: 'mock-transavia',
-        flightNumber: 'TO3058',
-        airline: 'Transavia France',
-        origin: {
-            code: 'ORY',
-            city: 'Paris (Orly)',
-            time: '2025-12-08T14:35:00.000+01:00', // Mon Dec 8 14:35 CET
-            timezone: 'CET',
-            latitude: 48.7233,
-            longitude: 2.3794,
-            terminal: '3',
-            gate: 'D12',
-        },
-        destination: {
-            code: 'FEZ',
-            city: 'Fès',
-            time: '2025-12-08T17:30:00.000+00:00', // Mon Dec 8 17:30 WET (Morocco is UTC+1 sometimes, but standard is often UTC/WET in winter, checking offset)
-            // Wait, Morocco is typically UTC+1. Let's assume standard time or check offset. 
-            // Actually let's stick to the screenshot times: 17:30 arrival.
-            timezone: 'WET',
-            latitude: 33.9273,
-            longitude: -4.9780,
-            terminal: '1',
-            gate: '-',
-            baggage: '4',
-        },
-        status: 'Scheduled',
-        delay: 0,
-    },
-    {
         id: '1',
         flightNumber: 'AA123',
         airline: 'American Airlines',
