@@ -181,18 +181,39 @@ export async function GET(request: Request) {
         const API_KEY = process.env.AVIATIONSTACK_API_KEY;
 
         if (API_KEY) {
-            const url = `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}`;
-            console.log(`Calling Aviationstack API for query: ${query}`);
+            // Calculate dates for Today and Tomorrow to ensure we get upcoming flights
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
 
-            const response = await fetch(url);
-            const data = await response.json();
+            const todayStr = today.toISOString().split('T')[0];
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-            // console.log('Aviationstack Response Status:', response.status);
-            // console.log('Aviationstack Data:', JSON.stringify(data).substring(0, 200) + '...');
+            console.log(`Fetching flights for ${todayStr} and ${tomorrowStr}`);
 
-            if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-                console.log(`Found ${data.data.length} flights from Aviationstack`);
-                const realFlights: Flight[] = data.data.map((apiFlight: any) => {
+            // Fetch Today and Tomorrow in parallel
+            const [responseToday, responseTomorrow] = await Promise.all([
+                fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${todayStr}`),
+                fetch(`http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${query}&flight_date=${tomorrowStr}`)
+            ]);
+
+            const [dataToday, dataTomorrow] = await Promise.all([
+                responseToday.json(),
+                responseTomorrow.json()
+            ]);
+
+            let allApiFlights: any[] = [];
+            
+            if (dataToday.data && Array.isArray(dataToday.data)) {
+                allApiFlights = [...allApiFlights, ...dataToday.data];
+            }
+            if (dataTomorrow.data && Array.isArray(dataTomorrow.data)) {
+                allApiFlights = [...allApiFlights, ...dataTomorrow.data];
+            }
+
+            if (allApiFlights.length > 0) {
+                console.log(`Found ${allApiFlights.length} flights total from Aviationstack`);
+                const realFlights: Flight[] = allApiFlights.map((apiFlight: any) => {
                     const originCode = apiFlight.departure.iata;
                     const destCode = apiFlight.arrival.iata;
 
@@ -249,8 +270,6 @@ export async function GET(request: Request) {
 
                 // Deduplicate flights based on ID
                 const uniqueFlights = Array.from(new Map(realFlights.map(item => [item.id, item])).values());
-
-            if (uniqueFlights.length > 0) {
                 // Sort flights by scheduled departure time (ascending)
                 uniqueFlights.sort((a, b) => new Date(a.origin.time).getTime() - new Date(b.origin.time).getTime());
 
@@ -288,7 +307,7 @@ export async function GET(request: Request) {
                 console.log(`Selected PAST flight: ${mostRecentPast.origin.time}`);
                 return NextResponse.json([mostRecentPast]);
             }
-            }
+
         } else {
              console.warn('AVIATIONSTACK_API_KEY is not set');
         }
