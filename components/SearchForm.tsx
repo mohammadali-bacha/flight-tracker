@@ -10,6 +10,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // Allow search even if empty to refresh or if user just wants to click
         if (query.trim()) {
             onSearch(query);
         }
@@ -34,7 +35,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                     />
                     <button
                         type="submit"
-                        disabled={isLoading || !query.trim()}
+                        disabled={isLoading}
                         className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-transform hover:scale-105 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 md:px-6 md:py-2.5 md:text-base whitespace-nowrap"
                     >
                         {isLoading ? (
