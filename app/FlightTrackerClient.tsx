@@ -36,146 +36,29 @@ export default function FlightTrackerClient() {
         setCurrentQuery(query);
         
         try {
-            // If no date specified, first get all available dates for this flight
-            if (!date) {
-                // First, fetch all schedules to get available dates
-                const schedulesUrl = `/api/flights/schedules?query=${encodeURIComponent(query)}`;
-                const schedulesResponse = await fetch(schedulesUrl);
-                const schedulesData = await schedulesResponse.json();
-                
-                console.log('Schedules data received:', schedulesData.length, 'schedules');
-                
-                // Extract unique dates from schedules
-                const availableDatesSet = new Set<string>();
-                if (schedulesData && Array.isArray(schedulesData)) {
-                    schedulesData.forEach((schedule: any) => {
-                        // Check multiple possible date fields
-                        const dateFields = [
-                            schedule.dep_date,
-                            schedule.dep_time,
-                            schedule.dep_scheduled
-                        ].filter(Boolean);
-                        
-                        dateFields.forEach((dateField: string) => {
-                            if (dateField) {
-                                let dateStr = '';
-                                // Handle different formats
-                                if (dateField.includes('T')) {
-                                    dateStr = dateField.split('T')[0];
-                                } else if (dateField.includes(' ')) {
-                                    dateStr = dateField.split(' ')[0];
-                                } else if (dateField.match(/^\d{4}-\d{2}-\d{2}/)) {
-                                    dateStr = dateField;
-                                } else {
-                                    // Try to parse
-                                    try {
-                                        const parsed = new Date(dateField);
-                                        if (!isNaN(parsed.getTime())) {
-                                            dateStr = parsed.toISOString().split('T')[0];
-                                        }
-                                    } catch (e) {
-                                        // Skip invalid dates
-                                    }
-                                }
-                                
-                                if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-                                    availableDatesSet.add(dateStr);
-                                }
-                            }
-                        });
-                    });
-                }
-                
-                console.log('Available dates found:', Array.from(availableDatesSet));
-                
-                // If no dates found in schedules, try today's flight API as fallback
-                let initialFlights: Flight[] = [];
-                if (availableDatesSet.size === 0) {
-                    console.log('No dates in schedules, trying flight API for today...');
-                    const todayUrl = `/api/flights?query=${encodeURIComponent(query)}`;
-                    const todayResponse = await fetch(todayUrl);
-                    const todayData = await todayResponse.json();
-                    
-                    if (todayData.length > 0) {
-                        // Extract date from today's flight
-                        const today = new Date().toISOString().split('T')[0];
-                        availableDatesSet.add(today);
-                        initialFlights = todayData;
-                    }
-                }
-                
-                // Convert to array and sort
-                const availableDatesArray = Array.from(availableDatesSet).sort();
-                
-                // Map to date options with labels
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                
-                const available = availableDatesArray.map((dateStr) => {
-                    const dateObj = new Date(dateStr + 'T00:00:00');
-                    const todayTime = today.getTime();
-                    const dateTime = dateObj.getTime();
-                    const offset = Math.floor((dateTime - todayTime) / (1000 * 60 * 60 * 24));
-                    
-                    let label = '';
-                    if (offset === -2) label = 'Avant-hier';
-                    else if (offset === -1) label = 'Hier';
-                    else if (offset === 0) label = 'Aujourd\'hui';
-                    else if (offset === 1) label = 'Demain';
-                    else {
-                        const weekday = dateObj.toLocaleDateString('fr-FR', { weekday: 'long' });
-                        label = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-                    }
-                    
-                    return {
-                        date: dateStr,
-                        offset: offset,
-                        label: label
-                    };
-                });
-                
-                if (available.length > 0) {
-                    const dateOptions = available.map(({ date: dateStr, label }) => {
-                        const date = new Date(dateStr);
-                        return {
-                            value: dateStr,
-                            label: label,
-                            shortLabel: date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-                        };
-                    });
-                    
-                    console.log('Date options:', dateOptions);
-                    setAvailableDates(dateOptions);
-                    // Select today if available, otherwise first available
-                    const todayOption = dateOptions.find(d => d.label === 'Aujourd\'hui');
-                    const defaultDate = todayOption ? todayOption.value : dateOptions[0].value;
-                    setSelectedDate(defaultDate);
-                    
-                    // Fetch flight for default date
-                    if (initialFlights.length > 0) {
-                        // Use already fetched flights if available
-                        setFlights(initialFlights);
-                    } else {
-                        // Fetch flight for default date
-                        const defaultUrl = `/api/flights?query=${encodeURIComponent(query)}&date=${defaultDate}`;
-                        const defaultResponse = await fetch(defaultUrl);
-                        const defaultData = await defaultResponse.json();
-                        setFlights(defaultData);
-                    }
-                } else {
-                    // No flights found for any date
-                    console.log('No available dates found');
-                    setAvailableDates([]);
-                    setFlights([]);
-                }
-            } else {
-                // Date specified, just fetch for that date
-                setSelectedDate(date);
-                const url = `/api/flights?query=${encodeURIComponent(query)}&date=${date}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                setFlights(data);
+            // Simple search: just fetch the flight for today
+            const url = `/api/flights?query=${encodeURIComponent(query)}${date ? `&date=${date}` : ''}`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+            
+            const data = await response.json();
+            
+            // Check if response is an error object
+            if (data.error) {
+                console.error('API error:', data.error);
+                setFlights([]);
+            } else if (Array.isArray(data)) {
+                setFlights(data);
+            } else {
+                setFlights([]);
+            }
+            
+            // Clear date options for now (simplified)
+            setAvailableDates([]);
+            setSelectedDate('');
         } catch (error) {
             console.error('Failed to fetch flights:', error);
             setFlights([]);
