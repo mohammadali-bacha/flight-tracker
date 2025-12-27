@@ -8,41 +8,11 @@ import TravelCard from '@/components/TravelCard';
 import WeatherCard from '@/components/WeatherCard';
 import { Flight } from '@/app/api/flights/route';
 
-// Generate date options for yesterday, today, tomorrow
-function getDateOptions() {
-    const today = new Date();
-    const dates = [];
-    
-    for (let i = -1; i <= 1; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        let label = '';
-        if (i === -1) label = 'Hier';
-        else if (i === 0) label = "Aujourd'hui";
-        else if (i === 1) label = 'Demain';
-        
-        const shortLabel = date.toLocaleDateString('fr-FR', { 
-            weekday: 'short', 
-            day: 'numeric', 
-            month: 'short' 
-        });
-        
-        dates.push({ value: dateStr, label, shortLabel });
-    }
-    
-    return dates;
-}
-
 export default function FlightTrackerClient() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [currentQuery, setCurrentQuery] = useState<string>('');
-    
-    const dateOptions = getDateOptions();
 
     // Wrap the search logic in a component that uses useSearchParams
     const SearchController = () => {
@@ -58,16 +28,13 @@ export default function FlightTrackerClient() {
         return null;
     };
 
-    const handleSearch = async (query: string, date?: string) => {
+    const handleSearch = async (query: string) => {
         setIsLoading(true);
         setHasSearched(true);
         setCurrentQuery(query);
         
-        // Use provided date or current selectedDate
-        const searchDate = date || selectedDate;
-        
         try {
-            const url = `/api/flights?query=${encodeURIComponent(query)}&date=${searchDate}`;
+            const url = `/api/flights?query=${encodeURIComponent(query)}`;
             const response = await fetch(url);
             
             if (!response.ok) {
@@ -89,13 +56,6 @@ export default function FlightTrackerClient() {
             setFlights([]);
         } finally {
             setIsLoading(false);
-        }
-    };
-    
-    const handleDateSelect = (date: string) => {
-        setSelectedDate(date);
-        if (currentQuery) {
-            handleSearch(currentQuery, date);
         }
     };
 
@@ -131,29 +91,6 @@ export default function FlightTrackerClient() {
                     <SearchForm onSearch={handleSearch} isLoading={isLoading} />
                 </div>
                 
-                {/* Date Selector - Show when we have a query */}
-                {currentQuery && (
-                    <div className="flex gap-2 justify-center flex-wrap">
-                        {dateOptions.map((dateOption) => (
-                            <button
-                                key={dateOption.value}
-                                type="button"
-                                onClick={() => handleDateSelect(dateOption.value)}
-                                disabled={isLoading}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedDate === dateOption.value
-                                        ? 'bg-white text-black shadow-lg'
-                                        : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
-                                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                <div className="flex flex-col items-center">
-                                    <span className="text-xs opacity-70">{dateOption.label}</span>
-                                    <span className="text-xs font-semibold">{dateOption.shortLabel}</span>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                )}
 
                 {/* Results */}
                 <div className="w-full space-y-6">
