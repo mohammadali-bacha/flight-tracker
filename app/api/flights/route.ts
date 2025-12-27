@@ -145,27 +145,15 @@ export async function GET(request: Request) {
         if (apiFlightsArray.length > 0) {
             console.log(`Found ${apiFlightsArray.length} flights from AirLabs`);
             
-            // Filter by date if provided
+            // For future/past dates from schedules API, don't filter strictly
+            // The schedules API returns recurring schedules, not specific dates
             let filteredFlights = apiFlightsArray;
-            if (dateParam) {
+            
+            // Only filter for today's flights (from flight API which has actual dates)
+            if (dateParam && !isFutureDate && !isPastDate) {
                 filteredFlights = apiFlightsArray.filter((apiFlight: any) => {
-                    // For schedules API, check dep_date field directly (most reliable)
-                    if (apiFlight.dep_date) {
-                        let flightDateStr = apiFlight.dep_date;
-                        // Handle different formats: "2024-12-28" or "2024-12-28T06:40:00"
-                        if (flightDateStr.includes('T')) {
-                            flightDateStr = flightDateStr.split('T')[0];
-                        } else if (flightDateStr.includes(' ')) {
-                            flightDateStr = flightDateStr.split(' ')[0];
-                        }
-                        if (flightDateStr === dateParam) {
-                            console.log(`Match found: dep_date ${apiFlight.dep_date} matches ${dateParam}`);
-                            return true;
-                        }
-                    }
-                    
-                    // Try multiple date fields and formats (for flight API and fallback)
                     const dateFields = [
+                        apiFlight.dep_date,
                         apiFlight.dep_time,
                         apiFlight.dep_estimated,
                         apiFlight.dep_actual,
@@ -174,14 +162,11 @@ export async function GET(request: Request) {
                     
                     for (const dateField of dateFields) {
                         try {
-                            // Handle different date formats
                             let flightDateStr = '';
                             if (typeof dateField === 'string') {
-                                // If it's already in YYYY-MM-DD format
                                 if (dateField.match(/^\d{4}-\d{2}-\d{2}/)) {
                                     flightDateStr = dateField.split('T')[0].split(' ')[0];
                                 } else {
-                                    // Try to parse it
                                     const parsed = new Date(dateField);
                                     if (!isNaN(parsed.getTime())) {
                                         flightDateStr = parsed.toISOString().split('T')[0];
@@ -190,19 +175,18 @@ export async function GET(request: Request) {
                             }
                             
                             if (flightDateStr === dateParam) {
-                                console.log(`Match found: ${dateField} matches ${dateParam}`);
                                 return true;
                             }
                         } catch (e) {
-                            // Continue to next field
+                            // Continue
                         }
                     }
                     return false;
                 });
-                console.log(`Filtered to ${filteredFlights.length} flights for date ${dateParam} out of ${apiFlightsArray.length} total`);
-                
-                // Don't return flights if they don't match the requested date
-                // This ensures different dates show different data
+                console.log(`Filtered to ${filteredFlights.length} flights for today ${dateParam}`);
+            } else if (isFutureDate || isPastDate) {
+                // For future/past dates, use all results from schedules API
+                console.log(`Using ${filteredFlights.length} flights for ${isFutureDate ? 'future' : 'past'} date ${dateParam}`);
             }
             
             const realFlights: Flight[] = filteredFlights.map((apiFlight: any) => {
@@ -215,49 +199,51 @@ export async function GET(request: Request) {
                 const originCoords = originAirport ? { lat: originAirport.lat, lon: originAirport.lon } : { lat: 0, lon: 0 };
                 const destCoords = destAirport ? { lat: destAirport.lat, lon: destAirport.lon } : { lat: 0, lon: 0 };
 
-                // Map status
+                // Map status - for future dates, always show as Scheduled
                 let status: Flight['status'] = 'Scheduled';
-                switch (apiFlight.status) {
-                    case 'active': status = 'In Air'; break;
-                    case 'landed': status = 'Landed'; break;
-                    case 'cancelled': status = 'Cancelled'; break;
-                    case 'scheduled': status = 'On Time'; break;
-                    default: status = 'Scheduled';
+                if (isFutureDate) {
+                    status = 'Scheduled';
+                } else {
+                    switch (apiFlight.status) {
+                        case 'active': status = 'In Air'; break;
+                        case 'landed': status = 'Landed'; break;
+                        case 'cancelled': status = 'Cancelled'; break;
+                        case 'scheduled': status = 'On Time'; break;
+                        default: status = 'Scheduled';
+                    }
                 }
 
-                // For schedules API, build time string from date and time
+                // Build time strings
                 let depTime = apiFlight.dep_estimated || apiFlight.dep_actual || apiFlight.dep_time;
                 let arrTime = apiFlight.arr_estimated || apiFlight.arr_actual || apiFlight.arr_time;
                 
-                // Handle schedules API format (has separate dep_date and dep_time fields)
-                if (isFutureDate && apiFlight.dep_date) {
-                    if (apiFlight.dep_time) {
-                        // If dep_time is just time (HH:MM), combine with date
-                        if (apiFlight.dep_time.match(/^\d{2}:\d{2}/)) {
-                            depTime = `${apiFlight.dep_date}T${apiFlight.dep_time}:00`;
-                        } else if (apiFlight.dep_time.includes('T')) {
-                            depTime = apiFlight.dep_time;
-                        } else {
-                            depTime = `${apiFlight.dep_date}T${apiFlight.dep_time}`;
+                // For future/past dates, combine requested date with schedule times
+                if ((isFutureDate || isPastDate) && dateParam) {
+                    // Extract just the time portion from schedule
+                    const extractTime = (timeStr: string | undefined): string => {
+                        if (!timeStr) return '00:00:00';
+                        // If it's just HH:MM format
+                        if (timeStr.match(/^\d{2}:\d{2}$/)) return `${timeStr}:00`;
+                        // If it includes T, extract time after T
+                        if (timeStr.includes('T')) {
+                            const parts = timeStr.split('T');
+                            return parts[1] || '00:00:00';
                         }
-                    } else {
-                        // Fallback: use date at midnight
-                        depTime = `${apiFlight.dep_date}T00:00:00`;
-                    }
-                }
-                
-                if (isFutureDate && apiFlight.arr_date) {
-                    if (apiFlight.arr_time) {
-                        if (apiFlight.arr_time.match(/^\d{2}:\d{2}/)) {
-                            arrTime = `${apiFlight.arr_date}T${apiFlight.arr_time}:00`;
-                        } else if (apiFlight.arr_time.includes('T')) {
-                            arrTime = apiFlight.arr_time;
-                        } else {
-                            arrTime = `${apiFlight.arr_date}T${apiFlight.arr_time}`;
+                        // If it includes space, extract time after space
+                        if (timeStr.includes(' ')) {
+                            const parts = timeStr.split(' ');
+                            return parts[1] || '00:00:00';
                         }
-                    } else {
-                        arrTime = `${apiFlight.arr_date}T00:00:00`;
-                    }
+                        return timeStr;
+                    };
+                    
+                    const depTimeOnly = extractTime(apiFlight.dep_time);
+                    const arrTimeOnly = extractTime(apiFlight.arr_time);
+                    
+                    depTime = `${dateParam}T${depTimeOnly}`;
+                    arrTime = `${dateParam}T${arrTimeOnly}`;
+                    
+                    console.log(`Built times for ${dateParam}: dep=${depTime}, arr=${arrTime}`);
                 }
 
                 return {
