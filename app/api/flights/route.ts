@@ -10,6 +10,24 @@ const toISODate = (str: string) => {
 // Type definition for the imported JSON
 const AIRPORTS: Record<string, { lat: number; lon: number; city: string; country: string; name: string }> = airportsData as any;
 
+// Helper function for fetch with timeout (8 seconds for Netlify)
+async function fetchWithTimeout(url: string, timeout = 8000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout');
+        }
+        throw error;
+    }
+}
+
 export interface Flight {
     id: string;
     flightNumber: string;
@@ -40,15 +58,14 @@ export interface Flight {
 }
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query');
-    const dateParam = searchParams.get('date'); // Format: YYYY-MM-DD
-
-    if (!query) {
-        return NextResponse.json([]);
-    }
-
     try {
+        const { searchParams } = new URL(request.url);
+        const query = searchParams.get('query');
+        const dateParam = searchParams.get('date'); // Format: YYYY-MM-DD
+
+        if (!query) {
+            return NextResponse.json([]);
+        }
         // AirLabs API
         const API_KEY = 'd1d40d2b-4015-46a3-b77c-01096738e6fd';
 
@@ -69,7 +86,7 @@ export async function GET(request: Request) {
             console.log(`Calling AirLabs Schedules API for query: ${query}, date: ${dateParam} (${isFutureDate ? 'future' : 'past'})`);
             
             try {
-                const schedulesResponse = await fetch(schedulesUrl);
+                const schedulesResponse = await fetchWithTimeout(schedulesUrl);
                 const schedulesData = await schedulesResponse.json();
                 
                 console.log('AirLabs Schedules Response Status:', schedulesResponse.status);
@@ -92,7 +109,7 @@ export async function GET(request: Request) {
             if (apiFlightsArray.length === 0) {
                 console.log('Schedules API returned no results, trying flight API as fallback...');
                 const flightUrl = `https://airlabs.co/api/v9/flight?flight_iata=${cleanQuery}&api_key=${API_KEY}`;
-                const flightResponse = await fetch(flightUrl);
+                const flightResponse = await fetchWithTimeout(flightUrl);
                 const flightData = await flightResponse.json();
                 
                 if (flightData.response) {
@@ -108,7 +125,7 @@ export async function GET(request: Request) {
             let url = `https://airlabs.co/api/v9/flight?flight_iata=${cleanQuery}&api_key=${API_KEY}`;
             console.log(`Calling AirLabs Flight API for query: ${query}, date: ${dateParam || 'today'}`);
             
-            const response = await fetch(url);
+            const response = await fetchWithTimeout(url);
             const data = await response.json();
             
             console.log('AirLabs Flight Response Status:', response.status);
@@ -282,6 +299,11 @@ export async function GET(request: Request) {
         }
     } catch (error) {
         console.error('AirLabs API failed:', error);
+        // Return error response instead of empty array
+        return NextResponse.json(
+            { error: 'Failed to fetch flight data', message: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500 }
+        );
     }
 
     // No flight found - return empty array

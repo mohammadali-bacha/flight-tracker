@@ -1,5 +1,23 @@
 import { NextResponse } from 'next/server';
 
+// Helper function for fetch with timeout (8 seconds for Netlify)
+async function fetchWithTimeout(url: string, timeout = 8000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout');
+        }
+        throw error;
+    }
+}
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query');
@@ -19,7 +37,7 @@ export async function GET(request: Request) {
         const schedulesUrl = `https://airlabs.co/api/v9/schedules?flight_iata=${cleanQuery}&api_key=${API_KEY}`;
         console.log(`Calling AirLabs Schedules API for all schedules: ${query}`);
         
-        const response = await fetch(schedulesUrl);
+        const response = await fetchWithTimeout(schedulesUrl);
         const data = await response.json();
         
         console.log('AirLabs Schedules Response Status:', response.status);
@@ -44,7 +62,10 @@ export async function GET(request: Request) {
         return NextResponse.json(schedulesArray);
     } catch (error) {
         console.error('AirLabs Schedules API failed:', error);
-        return NextResponse.json([]);
+        return NextResponse.json(
+            { error: 'Failed to fetch schedules', message: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500 }
+        );
     }
 }
 
