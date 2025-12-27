@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import airportsData from '@/app/data/airports.json';
 
+// Simple check for Safari-compatible dates: replace " " with "T"
+const toISODate = (str: string) => {
+    if (!str) return '';
+    return str.replace(' ', 'T');
+};
+
 // Type definition for the imported JSON
 const AIRPORTS: Record<string, { lat: number; lon: number; city: string; country: string; name: string }> = airportsData as any;
 
@@ -33,182 +39,161 @@ export interface Flight {
     delay?: number; // Delay in minutes
 }
 
-const MOCK_FLIGHTS: Flight[] = [
-    {
-        id: '1',
-        flightNumber: 'AA123',
-        airline: 'American Airlines',
-        origin: {
-            code: 'JFK',
-            city: 'New York',
-            time: '2025-11-21T08:00:00-05:00',
-            timezone: 'EST',
-            latitude: 40.6413,
-            longitude: -73.7781,
-            terminal: '4',
-            gate: 'B32',
-        },
-        destination: {
-            code: 'LHR',
-            city: 'London',
-            time: '2025-11-21T20:00:00+00:00',
-            timezone: 'GMT',
-            latitude: 51.4700,
-            longitude: -0.4543,
-            terminal: '3',
-            gate: 'A12',
-        },
-        status: 'On Time',
-        delay: 0,
-    },
-    {
-        id: '2',
-        flightNumber: 'BA456',
-        airline: 'British Airways',
-        origin: {
-            code: 'LHR',
-            city: 'London',
-            time: '2025-11-21T10:00:00+00:00',
-            timezone: 'GMT',
-            latitude: 51.4700,
-            longitude: -0.4543,
-            terminal: '5',
-            gate: 'A22',
-        },
-        destination: {
-            code: 'JFK',
-            city: 'New York',
-            time: '2025-11-21T13:00:00-05:00',
-            timezone: 'EST',
-            latitude: 40.6413,
-            longitude: -73.7781,
-            terminal: '7',
-            gate: 'C45',
-        },
-        status: 'In Air',
-        delay: 0,
-    },
-    {
-        id: '3',
-        flightNumber: 'DL789',
-        airline: 'Delta Air Lines',
-        origin: {
-            code: 'LAX',
-            city: 'Los Angeles',
-            time: '2025-11-21T09:00:00-08:00',
-            timezone: 'PST',
-            latitude: 33.9416,
-            longitude: -118.4085,
-        },
-        destination: {
-            code: 'HND',
-            city: 'Tokyo',
-            time: '2025-11-22T14:00:00+09:00',
-            timezone: 'JST',
-            latitude: 35.5494,
-            longitude: 139.7798,
-        },
-        status: 'Boarding',
-        delay: 0,
-    },
-    {
-        id: '4',
-        flightNumber: 'UA101',
-        airline: 'United Airlines',
-        origin: {
-            code: 'SFO',
-            city: 'San Francisco',
-            time: '2025-11-21T11:30:00-08:00',
-            timezone: 'PST',
-            latitude: 37.6213,
-            longitude: -122.3790,
-        },
-        destination: {
-            code: 'SIN',
-            city: 'Singapore',
-            time: '2025-11-22T19:30:00+08:00',
-            timezone: 'SGT',
-            latitude: 1.3644,
-            longitude: 103.9915,
-        },
-        status: 'Delayed',
-        delay: 45,
-    },
-    {
-        id: '5',
-        flightNumber: 'AF202',
-        airline: 'Air France',
-        origin: {
-            code: 'CDG',
-            city: 'Paris',
-            time: '2025-11-21T14:00:00+01:00',
-            timezone: 'CET',
-            latitude: 49.0097,
-            longitude: 2.5479,
-        },
-        destination: {
-            code: 'DXB',
-            city: 'Dubai',
-            time: '2025-11-21T23:45:00+04:00',
-            timezone: 'GST',
-            latitude: 25.2532,
-            longitude: 55.3657,
-            baggage: '5', // Added for testing
-        },
-        status: 'On Time',
-        delay: 0,
-    },
-];
-
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query');
+    const dateParam = searchParams.get('date'); // Format: YYYY-MM-DD
 
     if (!query) {
-        return NextResponse.json(MOCK_FLIGHTS);
+        return NextResponse.json([]);
     }
-
-    // Keep mock data as fallback
-    const filteredFlights = MOCK_FLIGHTS.filter((flight) =>
-        flight.flightNumber.toLowerCase().includes(query.toLowerCase()) ||
-        flight.airline.toLowerCase().includes(query.toLowerCase()) ||
-        flight.origin.city.toLowerCase().includes(query.toLowerCase()) ||
-        flight.destination.city.toLowerCase().includes(query.toLowerCase())
-    );
 
     try {
         // AirLabs API
         const API_KEY = 'd1d40d2b-4015-46a3-b77c-01096738e6fd';
 
-        const url = `https://airlabs.co/api/v9/flight?flight_iata=${query}&api_key=${API_KEY}`;
-        console.log(`Calling AirLabs API for query: ${query}`);
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        console.log('AirLabs Response Status:', response.status);
-        console.log('AirLabs Data:', JSON.stringify(data).substring(0, 200) + '...'); // Log first 200 chars
-
-        // AirLabs returns data in a 'response' field.
-        // It can be an array OR a single object depending on the query.
+        // Clean up query (remove spaces, upper case)
+        const cleanQuery = query.replace(/\s/g, '').toUpperCase();
+        
+        // Determine if we're looking for today, past, or future date
+        const today = new Date().toISOString().split('T')[0];
+        const isFutureDate = dateParam && dateParam > today;
+        const isPastDate = dateParam && dateParam < today;
+        
         let apiFlightsArray: any[] = [];
-
-        if (data.response) {
-            if (Array.isArray(data.response)) {
-                apiFlightsArray = data.response;
-            } else {
-                apiFlightsArray = [data.response];
+        
+        // For future dates or past dates, use schedules endpoint; for today, use flight endpoint
+        if (isFutureDate || isPastDate) {
+            // Use schedules API for future/past dates
+            const schedulesUrl = `https://airlabs.co/api/v9/schedules?flight_iata=${cleanQuery}&api_key=${API_KEY}`;
+            console.log(`Calling AirLabs Schedules API for query: ${query}, date: ${dateParam} (${isFutureDate ? 'future' : 'past'})`);
+            
+            try {
+                const schedulesResponse = await fetch(schedulesUrl);
+                const schedulesData = await schedulesResponse.json();
+                
+                console.log('AirLabs Schedules Response Status:', schedulesResponse.status);
+                console.log('AirLabs Schedules Data:', JSON.stringify(schedulesData).substring(0, 500) + '...');
+                
+                if (schedulesData.error) {
+                    console.log('AirLabs Schedules API returned error:', schedulesData.error.code, '-', schedulesData.error.message);
+                } else if (schedulesData.response) {
+                    if (Array.isArray(schedulesData.response)) {
+                        apiFlightsArray = schedulesData.response;
+                    } else {
+                        apiFlightsArray = [schedulesData.response];
+                    }
+                }
+            } catch (schedulesError) {
+                console.error('Error calling schedules API:', schedulesError);
+            }
+            
+            // If schedules didn't return results, try flight API as fallback
+            if (apiFlightsArray.length === 0) {
+                console.log('Schedules API returned no results, trying flight API as fallback...');
+                const flightUrl = `https://airlabs.co/api/v9/flight?flight_iata=${cleanQuery}&api_key=${API_KEY}`;
+                const flightResponse = await fetch(flightUrl);
+                const flightData = await flightResponse.json();
+                
+                if (flightData.response) {
+                    if (Array.isArray(flightData.response)) {
+                        apiFlightsArray = flightData.response;
+                    } else {
+                        apiFlightsArray = [flightData.response];
+                    }
+                }
+            }
+        } else {
+            // Use flight API for today/current flights
+            let url = `https://airlabs.co/api/v9/flight?flight_iata=${cleanQuery}&api_key=${API_KEY}`;
+            console.log(`Calling AirLabs Flight API for query: ${query}, date: ${dateParam || 'today'}`);
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            console.log('AirLabs Flight Response Status:', response.status);
+            console.log('AirLabs Flight Data:', JSON.stringify(data).substring(0, 200) + '...');
+            
+            if (data.error) {
+                console.log('AirLabs Flight API returned error:', data.error.code, '-', data.error.message);
+            } else if (data.response) {
+                if (Array.isArray(data.response)) {
+                    apiFlightsArray = data.response;
+                } else {
+                    apiFlightsArray = [data.response];
+                }
             }
         }
 
         if (apiFlightsArray.length > 0) {
             console.log(`Found ${apiFlightsArray.length} flights from AirLabs`);
-            const realFlights: Flight[] = apiFlightsArray.map((apiFlight: any) => {
+            
+            // Filter by date if provided
+            let filteredFlights = apiFlightsArray;
+            if (dateParam) {
+                filteredFlights = apiFlightsArray.filter((apiFlight: any) => {
+                    // For schedules API, check dep_date field directly (most reliable)
+                    if (apiFlight.dep_date) {
+                        let flightDateStr = apiFlight.dep_date;
+                        // Handle different formats: "2024-12-28" or "2024-12-28T06:40:00"
+                        if (flightDateStr.includes('T')) {
+                            flightDateStr = flightDateStr.split('T')[0];
+                        } else if (flightDateStr.includes(' ')) {
+                            flightDateStr = flightDateStr.split(' ')[0];
+                        }
+                        if (flightDateStr === dateParam) {
+                            console.log(`Match found: dep_date ${apiFlight.dep_date} matches ${dateParam}`);
+                            return true;
+                        }
+                    }
+                    
+                    // Try multiple date fields and formats (for flight API and fallback)
+                    const dateFields = [
+                        apiFlight.dep_time,
+                        apiFlight.dep_estimated,
+                        apiFlight.dep_actual,
+                        apiFlight.dep_scheduled
+                    ].filter(Boolean);
+                    
+                    for (const dateField of dateFields) {
+                        try {
+                            // Handle different date formats
+                            let flightDateStr = '';
+                            if (typeof dateField === 'string') {
+                                // If it's already in YYYY-MM-DD format
+                                if (dateField.match(/^\d{4}-\d{2}-\d{2}/)) {
+                                    flightDateStr = dateField.split('T')[0].split(' ')[0];
+                                } else {
+                                    // Try to parse it
+                                    const parsed = new Date(dateField);
+                                    if (!isNaN(parsed.getTime())) {
+                                        flightDateStr = parsed.toISOString().split('T')[0];
+                                    }
+                                }
+                            }
+                            
+                            if (flightDateStr === dateParam) {
+                                console.log(`Match found: ${dateField} matches ${dateParam}`);
+                                return true;
+                            }
+                        } catch (e) {
+                            // Continue to next field
+                        }
+                    }
+                    return false;
+                });
+                console.log(`Filtered to ${filteredFlights.length} flights for date ${dateParam} out of ${apiFlightsArray.length} total`);
+                
+                // Don't return flights if they don't match the requested date
+                // This ensures different dates show different data
+            }
+            
+            const realFlights: Flight[] = filteredFlights.map((apiFlight: any) => {
                 const originCode = apiFlight.dep_iata;
                 const destCode = apiFlight.arr_iata;
 
-                const originAirport = AIRPORTS[originCode];
-                const destAirport = AIRPORTS[destCode];
+                const originAirport = AIRPORTS[originCode?.toUpperCase()];
+                const destAirport = AIRPORTS[destCode?.toUpperCase()];
 
                 const originCoords = originAirport ? { lat: originAirport.lat, lon: originAirport.lon } : { lat: 0, lon: 0 };
                 const destCoords = destAirport ? { lat: destAirport.lat, lon: destAirport.lon } : { lat: 0, lon: 0 };
@@ -223,15 +208,50 @@ export async function GET(request: Request) {
                     default: status = 'Scheduled';
                 }
 
+                // For schedules API, build time string from date and time
+                let depTime = apiFlight.dep_estimated || apiFlight.dep_actual || apiFlight.dep_time;
+                let arrTime = apiFlight.arr_estimated || apiFlight.arr_actual || apiFlight.arr_time;
+                
+                // Handle schedules API format (has separate dep_date and dep_time fields)
+                if (isFutureDate && apiFlight.dep_date) {
+                    if (apiFlight.dep_time) {
+                        // If dep_time is just time (HH:MM), combine with date
+                        if (apiFlight.dep_time.match(/^\d{2}:\d{2}/)) {
+                            depTime = `${apiFlight.dep_date}T${apiFlight.dep_time}:00`;
+                        } else if (apiFlight.dep_time.includes('T')) {
+                            depTime = apiFlight.dep_time;
+                        } else {
+                            depTime = `${apiFlight.dep_date}T${apiFlight.dep_time}`;
+                        }
+                    } else {
+                        // Fallback: use date at midnight
+                        depTime = `${apiFlight.dep_date}T00:00:00`;
+                    }
+                }
+                
+                if (isFutureDate && apiFlight.arr_date) {
+                    if (apiFlight.arr_time) {
+                        if (apiFlight.arr_time.match(/^\d{2}:\d{2}/)) {
+                            arrTime = `${apiFlight.arr_date}T${apiFlight.arr_time}:00`;
+                        } else if (apiFlight.arr_time.includes('T')) {
+                            arrTime = apiFlight.arr_time;
+                        } else {
+                            arrTime = `${apiFlight.arr_date}T${apiFlight.arr_time}`;
+                        }
+                    } else {
+                        arrTime = `${apiFlight.arr_date}T00:00:00`;
+                    }
+                }
+
                 return {
-                    id: `${apiFlight.flight_iata}-${apiFlight.dep_time}`,
+                    id: `${apiFlight.flight_iata}-${apiFlight.dep_time || apiFlight.dep_date}-${dateParam || 'today'}`,
                     flightNumber: apiFlight.flight_iata,
                     airline: apiFlight.airline_name || apiFlight.airline_iata || 'Unknown Airline',
                     origin: {
                         code: originCode,
                         city: originAirport ? originAirport.city : originCode,
-                        time: apiFlight.dep_estimated || apiFlight.dep_actual || apiFlight.dep_time,
-                        timezone: 'UTC', // AirLabs doesn't always provide timezone directly in this endpoint, defaulting to UTC or need logic
+                        time: toISODate(apiFlight.dep_estimated || apiFlight.dep_actual || depTime),
+                        timezone: 'UTC',
                         latitude: originCoords.lat,
                         longitude: originCoords.lon,
                         terminal: apiFlight.dep_terminal,
@@ -240,7 +260,7 @@ export async function GET(request: Request) {
                     destination: {
                         code: destCode,
                         city: destAirport ? destAirport.city : destCode,
-                        time: apiFlight.arr_estimated || apiFlight.arr_actual || apiFlight.arr_time,
+                        time: toISODate(apiFlight.arr_estimated || apiFlight.arr_actual || arrTime),
                         timezone: 'UTC',
                         latitude: destCoords.lat,
                         longitude: destCoords.lon,
@@ -261,11 +281,9 @@ export async function GET(request: Request) {
             }
         }
     } catch (error) {
-        console.error('AirLabs API failed, falling back to mock:', error);
+        console.error('AirLabs API failed:', error);
     }
 
-    // Simulate network delay for mock
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    return NextResponse.json(filteredFlights);
+    // No flight found - return empty array
+    return NextResponse.json([]);
 }

@@ -7,24 +7,27 @@ interface FlightCardProps {
 
 export default function FlightCard({ flight }: FlightCardProps) {
     const formatTime = (dateString: string) => {
-        // Parse the ISO string which already contains timezone info
+        if (!dateString) return '--:--';
         const date = new Date(dateString);
-        // Format in the original timezone by extracting hours and minutes
+        if (isNaN(date.getTime())) return '--:--';
         return date.toLocaleTimeString('fr-FR', {
             hour: '2-digit',
             minute: '2-digit',
             hour12: false,
-            timeZone: 'UTC', // We'll use the UTC time from the ISO string
+            timeZone: 'UTC',
         });
     };
 
     const formatTimeWithTimezone = (dateString: string) => {
+        if (!dateString) return '--:--';
         // Extract just the time part from ISO string (before timezone offset)
         const match = dateString.match(/T(\d{2}):(\d{2})/);
         if (match) {
             return `${match[1]}:${match[2]}`;
         }
-        return new Date(dateString).toLocaleTimeString('fr-FR', {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '--:--';
+        return date.toLocaleTimeString('fr-FR', {
             hour: '2-digit',
             minute: '2-digit',
             hour12: false,
@@ -32,7 +35,9 @@ export default function FlightCard({ flight }: FlightCardProps) {
     };
 
     const formatDate = (dateString: string) => {
+        if (!dateString) return '';
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
         return date.toLocaleDateString('fr-FR', {
             weekday: 'short',
             month: 'short',
@@ -80,7 +85,9 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         <span className="text-xs text-gray-400 uppercase tracking-wider mb-1">Arrivée conseillée</span>
                         <span className="text-xl font-bold text-white">
                             {(() => {
+                                if (!flight.origin.time) return '--:--';
                                 const date = new Date(flight.origin.time);
+                                if (isNaN(date.getTime())) return '--:--';
                                 date.setHours(date.getHours() - 2);
                                 return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
                             })()}
@@ -148,8 +155,10 @@ export default function FlightCard({ flight }: FlightCardProps) {
                             <span className="text-[10px] uppercase tracking-wider text-gray-500">Durée de vol estimée</span>
                             <span className="text-sm font-bold text-white">
                                 {(() => {
+                                    if (!flight.origin.time || !flight.destination.time) return '--:--';
                                     const start = new Date(flight.origin.time).getTime();
                                     const end = new Date(flight.destination.time).getTime();
+                                    if (isNaN(start) || isNaN(end)) return '--:--';
                                     const durationMs = end - start;
                                     const hours = Math.floor(durationMs / (1000 * 60 * 60));
                                     const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));

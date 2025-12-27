@@ -12,6 +12,9 @@ export default function FlightTrackerClient() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+    const [availableDates, setAvailableDates] = useState<Array<{value: string, label: string, shortLabel: string}>>([]);
+    const [selectedDate, setSelectedDate] = useState<string>('');
+    const [currentQuery, setCurrentQuery] = useState<string>('');
 
     // Wrap the search logic in a component that uses useSearchParams
     const SearchController = () => {
@@ -27,18 +30,176 @@ export default function FlightTrackerClient() {
         return null;
     };
 
-    const handleSearch = async (query: string) => {
+    const handleSearch = async (query: string, date?: string) => {
         setIsLoading(true);
         setHasSearched(true);
+        setCurrentQuery(query);
+        
         try {
-            const response = await fetch(`/api/flights?query=${encodeURIComponent(query)}`);
-            const data = await response.json();
-            setFlights(data);
+            // If no date specified, first get all available dates for this flight
+            if (!date) {
+                // First, fetch all schedules to get available dates
+                const schedulesUrl = `/api/flights/schedules?query=${encodeURIComponent(query)}`;
+                const schedulesResponse = await fetch(schedulesUrl);
+                const schedulesData = await schedulesResponse.json();
+                
+                console.log('Schedules data received:', schedulesData.length, 'schedules');
+                
+                // Extract unique dates from schedules
+                const availableDatesSet = new Set<string>();
+                if (schedulesData && Array.isArray(schedulesData)) {
+                    schedulesData.forEach((schedule: any) => {
+                        // Check multiple possible date fields
+                        const dateFields = [
+                            schedule.dep_date,
+                            schedule.dep_time,
+                            schedule.dep_scheduled
+                        ].filter(Boolean);
+                        
+                        dateFields.forEach((dateField: string) => {
+                            if (dateField) {
+                                let dateStr = '';
+                                // Handle different formats
+                                if (dateField.includes('T')) {
+                                    dateStr = dateField.split('T')[0];
+                                } else if (dateField.includes(' ')) {
+                                    dateStr = dateField.split(' ')[0];
+                                } else if (dateField.match(/^\d{4}-\d{2}-\d{2}/)) {
+                                    dateStr = dateField;
+                                } else {
+                                    // Try to parse
+                                    try {
+                                        const parsed = new Date(dateField);
+                                        if (!isNaN(parsed.getTime())) {
+                                            dateStr = parsed.toISOString().split('T')[0];
+                                        }
+                                    } catch (e) {
+                                        // Skip invalid dates
+                                    }
+                                }
+                                
+                                if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+                                    availableDatesSet.add(dateStr);
+                                }
+                            }
+                        });
+                    });
+                }
+                
+                console.log('Available dates found:', Array.from(availableDatesSet));
+                
+                // If no dates found in schedules, try today's flight API as fallback
+                let initialFlights: Flight[] = [];
+                if (availableDatesSet.size === 0) {
+                    console.log('No dates in schedules, trying flight API for today...');
+                    const todayUrl = `/api/flights?query=${encodeURIComponent(query)}`;
+                    const todayResponse = await fetch(todayUrl);
+                    const todayData = await todayResponse.json();
+                    
+                    if (todayData.length > 0) {
+                        // Extract date from today's flight
+                        const today = new Date().toISOString().split('T')[0];
+                        availableDatesSet.add(today);
+                        initialFlights = todayData;
+                    }
+                }
+                
+                // Convert to array and sort
+                const availableDatesArray = Array.from(availableDatesSet).sort();
+                
+                // Map to date options with labels
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const available = availableDatesArray.map((dateStr) => {
+                    const dateObj = new Date(dateStr + 'T00:00:00');
+                    const todayTime = today.getTime();
+                    const dateTime = dateObj.getTime();
+                    const offset = Math.floor((dateTime - todayTime) / (1000 * 60 * 60 * 24));
+                    
+                    let label = '';
+                    if (offset === -2) label = 'Avant-hier';
+                    else if (offset === -1) label = 'Hier';
+                    else if (offset === 0) label = 'Aujourd\'hui';
+                    else if (offset === 1) label = 'Demain';
+                    else {
+                        const weekday = dateObj.toLocaleDateString('fr-FR', { weekday: 'long' });
+                        label = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+                    }
+                    
+                    return {
+                        date: dateStr,
+                        offset: offset,
+                        label: label
+                    };
+                });
+                
+                if (available.length > 0) {
+                    const dateOptions = available.map(({ date: dateStr, label }) => {
+                        const date = new Date(dateStr);
+                        return {
+                            value: dateStr,
+                            label: label,
+                            shortLabel: date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+                        };
+                    });
+                    
+                    console.log('Date options:', dateOptions);
+                    setAvailableDates(dateOptions);
+                    // Select today if available, otherwise first available
+                    const todayOption = dateOptions.find(d => d.label === 'Aujourd\'hui');
+                    const defaultDate = todayOption ? todayOption.value : dateOptions[0].value;
+                    setSelectedDate(defaultDate);
+                    
+                    // Fetch flight for default date
+                    if (initialFlights.length > 0) {
+                        // Use already fetched flights if available
+                        setFlights(initialFlights);
+                    } else {
+                        // Fetch flight for default date
+                        const defaultUrl = `/api/flights?query=${encodeURIComponent(query)}&date=${defaultDate}`;
+                        const defaultResponse = await fetch(defaultUrl);
+                        const defaultData = await defaultResponse.json();
+                        setFlights(defaultData);
+                    }
+                } else {
+                    // No flights found for any date
+                    console.log('No available dates found');
+                    setAvailableDates([]);
+                    setFlights([]);
+                }
+            } else {
+                // Date specified, just fetch for that date
+                setSelectedDate(date);
+                const url = `/api/flights?query=${encodeURIComponent(query)}&date=${date}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                setFlights(data);
+            }
         } catch (error) {
             console.error('Failed to fetch flights:', error);
             setFlights([]);
+            setAvailableDates([]);
         } finally {
             setIsLoading(false);
+        }
+    };
+    
+    const handleDateSelect = async (date: string) => {
+        if (currentQuery) {
+            setSelectedDate(date);
+            setIsLoading(true);
+            try {
+                const url = `/api/flights?query=${encodeURIComponent(currentQuery)}&date=${date}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                setFlights(data);
+            } catch (error) {
+                console.error('Failed to fetch flights:', error);
+                setFlights([]);
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -51,7 +212,7 @@ export default function FlightTrackerClient() {
             <div className="absolute -left-4 top-0 h-96 w-96 rounded-full bg-purple-500/20 blur-[128px]" />
             <div className="absolute -right-4 bottom-0 h-96 w-96 rounded-full bg-blue-500/20 blur-[128px]" />
 
-            <div className="relative z-10 flex w-full max-w-4xl flex-col items-center gap-8">
+            <div className="relative z-10 flex w-full max-w-4xl flex-col items-center justify-center gap-8 mx-auto">
                 {/* Header */}
                 <div className="text-center">
                     <div className="mb-4 inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur-md">
@@ -70,7 +231,32 @@ export default function FlightTrackerClient() {
                 </div>
 
                 {/* Search */}
-                <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+                <div className="w-full max-w-2xl">
+                    <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+                </div>
+                
+                {/* Date Selector - Only show if we have available dates */}
+                {availableDates.length > 0 && (
+                    <div className="flex gap-2 justify-center flex-wrap">
+                        {availableDates.map((dateOption) => (
+                            <button
+                                key={dateOption.value}
+                                type="button"
+                                onClick={() => handleDateSelect(dateOption.value)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    selectedDate === dateOption.value
+                                        ? 'bg-white text-black shadow-lg'
+                                        : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                                }`}
+                            >
+                                <div className="flex flex-col items-center">
+                                    <span className="text-xs opacity-70">{dateOption.label}</span>
+                                    <span className="text-xs font-semibold">{dateOption.shortLabel}</span>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {/* Results */}
                 <div className="w-full space-y-6">

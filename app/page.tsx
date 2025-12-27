@@ -30,6 +30,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-export default function Page() {
+export default async function Page({ searchParams }: Props) {
   return <FlightTrackerClient />;
 }

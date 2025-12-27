@@ -80,14 +80,28 @@ export default function TravelCard({ airportName, airportCode, latitude, longitu
                 const userLon = position.coords.longitude;
                 calculateRoute(userLat, userLon);
             },
-            (err) => {
-                console.error('Erreur de géolocalisation:', err);
-                if (err.code === 1) {
-                    setError("Permission refusée. Cliquez pour réessayer.");
-                } else if (err.code === 2) {
-                    setError("Position indisponible");
+            (err: GeolocationPositionError | null) => {
+                // Only log unexpected errors, not permission denials (which are normal)
+                if (err && err.code !== 1) {
+                    const errorMessage = err.message || `Code d'erreur: ${err.code}` || 'Erreur inconnue';
+                    console.error('Erreur de géolocalisation:', errorMessage);
+                }
+                if (err) {
+                    switch (err.code) {
+                        case 1: // PERMISSION_DENIED
+                            setError("Permission refusée. Cliquez pour réessayer.");
+                            break;
+                        case 2: // POSITION_UNAVAILABLE
+                            setError("Position indisponible");
+                            break;
+                        case 3: // TIMEOUT
+                            setError("Délai d'attente dépassé. Réessayez.");
+                            break;
+                        default:
+                            setError("Géolocalisation indisponible. Cliquez pour activer.");
+                    }
                 } else {
-                    setError("Erreur de géolocalisation");
+                    setError("Géolocalisation indisponible. Cliquez pour activer.");
                 }
                 setLoading(false);
             },
@@ -110,6 +124,7 @@ export default function TravelCard({ airportName, airportCode, latitude, longitu
         if (!hasAttempted) {
             requestLocation();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [latitude, longitude]);
 
     const formatDuration = (seconds: number): string => {
