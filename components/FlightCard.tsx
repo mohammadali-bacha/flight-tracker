@@ -20,8 +20,8 @@ export default function FlightCard({ flight }: FlightCardProps) {
 
     const formatTimeWithTimezone = (dateString: string) => {
         if (!dateString) return '--:--';
-        // Extract just the time part from ISO string (before timezone offset)
-        const match = dateString.match(/T(\d{2}):(\d{2})/);
+        // Handle format: "2025-12-27 06:40+01:00" or "2025-12-27T06:40:00"
+        const match = dateString.match(/(\d{2}):(\d{2})/);
         if (match) {
             return `${match[1]}:${match[2]}`;
         }
@@ -36,7 +36,9 @@ export default function FlightCard({ flight }: FlightCardProps) {
 
     const formatDate = (dateString: string) => {
         if (!dateString) return '';
-        const date = new Date(dateString);
+        // Handle format: "2025-12-27 06:40+01:00" - replace space with T
+        const normalizedDate = dateString.replace(' ', 'T');
+        const date = new Date(normalizedDate);
         if (isNaN(date.getTime())) return '';
         return date.toLocaleDateString('fr-FR', {
             weekday: 'short',
@@ -138,6 +140,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         <div className="text-5xl md:text-7xl font-black tracking-tighter text-white">{flight.origin.code}</div>
                         <div className="text-sm font-medium text-gray-400">{flight.origin.city}</div>
                         <div className="mt-1 text-2xl font-bold text-white">{formatTimeWithTimezone(flight.origin.time)}</div>
+                        <div className="text-xs text-gray-500">{formatDate(flight.origin.time)}</div>
                     </div>
 
                     {/* Flight Path Visual */}
@@ -173,6 +176,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                         <div className="text-5xl md:text-7xl font-black tracking-tighter text-white">{flight.destination.code}</div>
                         <div className="text-sm font-medium text-gray-400">{flight.destination.city}</div>
                         <div className="mt-1 text-2xl font-bold text-white">{formatTimeWithTimezone(flight.destination.time)}</div>
+                        <div className="text-xs text-gray-500">{formatDate(flight.destination.time)}</div>
                         {flight.destination.baggage && (
                             <div className="mt-2 flex flex-col items-center md:items-end">
                                 <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1 border border-yellow-500/20 animate-pulse">
